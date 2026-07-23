@@ -1,14 +1,24 @@
-<aside class="w-64 bg-slate-800 border-r border-slate-700 flex flex-col justify-between shrink-0 hidden md:flex h-screen">
+<!-- Overlay gelap di mode mobile, klik buat nutup sidebar. md:hidden dobel-pasti supaya nggak pernah nongol di desktop walau class 'hidden' ke-toggle JS. -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+<aside id="app-sidebar" class="w-64 bg-slate-800 border-r border-slate-700 flex flex-col justify-between shrink-0 h-screen fixed md:static inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
     <div class="flex-1 flex flex-col overflow-y-auto min-h-0">
         <!-- Logo / App Header -->
-        <div class="p-6 border-b border-slate-700 flex items-center space-x-3 shrink-0">
-            <div class="bg-indigo-600 text-white font-bold p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
-                SR
+        <div class="p-6 border-b border-slate-700 flex items-center justify-between shrink-0">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white font-bold p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
+                    SR
+                </div>
+                <div>
+                    <h2 class="font-bold text-white text-base leading-tight">SR GROUP</h2>
+                    <p class="text-xs text-slate-400">Marcom Analytics & AI</p>
+                </div>
             </div>
-            <div>
-                <h2 class="font-bold text-white text-base leading-tight">SR GROUP</h2>
-                <p class="text-xs text-slate-400">Marcom Analytics & AI</p>
-            </div>
+
+            <!-- Tombol Tutup, cuma tampil di mode mobile -->
+            <button type="button" onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-700/50 transition" aria-label="Tutup menu">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
 
         <!-- Menu Navigation -->
@@ -87,19 +97,22 @@
                         </div>
                     @endif
 
-                    <!-- Data Target / Kompetitor -->
-                    <a href="{{ route('admin.datasource.index') }}" 
-                       class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('admin.datasource.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' }}">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                        <span>Data Target / Kompetitor</span>
-                    </a>
+                    <!-- Menu Admin (cuma tampil untuk role admin) -->
+                    @if(Auth::check() && Auth::user()->isAdmin())
+                        <!-- Data Target / Kompetitor -->
+                        <a href="{{ route('admin.datasource.index') }}" 
+                           class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('admin.datasource.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            <span>Data Target / Kompetitor</span>
+                        </a>
 
-                    <!-- Log Scraping / Scheduler -->
-                    <a href="{{ route('admin.scrapelog.index') }}" 
-                       class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('admin.scrapelog.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' }}">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Log Scraping</span>
-                    </a>
+                        <!-- Log Scraping / Scheduler -->
+                        <a href="{{ route('admin.scrapelog.index') }}" 
+                           class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('admin.scrapelog.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Log Scraping</span>
+                        </a>
+                    @endif
 
                 </div>
             </div>
@@ -108,6 +121,13 @@
             <div>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">PENGATURAN</p>
                 <div class="space-y-1">
+                    @if(Auth::check() && Auth::user()->isAdmin())
+                        <a href="{{ route('admin.users.index') }}" 
+                           class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('admin.users.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-3-6.65"/></svg>
+                            <span>Kelola User</span>
+                        </a>
+                    @endif
                     @if (Route::has('register'))
                     <a href="{{ route('register') }}" 
                        class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('register') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' }}">
@@ -125,7 +145,12 @@
         <div class="flex items-center justify-between p-2">
             <div class="truncate">
                 <p class="text-sm font-semibold text-white truncate">{{ Auth::user()->name ?? 'Admin Marcom' }}</p>
-                <p class="text-xs text-slate-400 truncate">{{ Auth::user()->email ?? 'admin@srgroup.com' }}</p>
+                <p class="text-xs text-slate-400 truncate flex items-center gap-1.5">
+                    {{ Auth::user()->email ?? 'admin@srgroup.com' }}
+                    @if(Auth::check() && Auth::user()->isAdmin())
+                        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0">Admin</span>
+                    @endif
+                </p>
             </div>
             
             <form method="POST" action="{{ route('logout') }}">
@@ -137,3 +162,27 @@
         </div>
     </div>
 </aside>
+
+<script>
+    // Toggle drawer sidebar di mode mobile (dipanggil dari tombol hamburger
+    // di header tiap halaman & tombol X/overlay di dalam sidebar sendiri).
+    // Sengaja pakai transform (bukan hidden/block) supaya animasi geser
+    // (transition-transform) di <aside> jalan mulus.
+    function toggleSidebar() {
+        const sidebar = document.getElementById('app-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar) sidebar.classList.toggle('-translate-x-full');
+        if (overlay) overlay.classList.toggle('hidden');
+    }
+    window.toggleSidebar = toggleSidebar;
+
+    // Kalau layar di-resize/rotate dari potrait ke ukuran desktop (md ke atas)
+    // sementara drawer lagi kebuka, pastikan overlay ikut ketutup -- di
+    // desktop sidebar-nya statis (md:translate-x-0), jadi overlay gelap tidak
+    // boleh nyangkut menutupi konten.
+    window.addEventListener('resize', function () {
+        if (window.innerWidth >= 768) {
+            document.getElementById('sidebar-overlay')?.classList.add('hidden');
+        }
+    });
+</script>

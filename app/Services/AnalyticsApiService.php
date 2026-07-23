@@ -68,6 +68,20 @@ class AnalyticsApiService
     }
 
     /**
+     * GET /trends/live?keyword=...&geo=ID
+     * Query LANGSUNG ke Google Trends (bukan data lama hasil scraping).
+     * Dipakai kalau keyword/topiknya belum tentu ada di antara
+     * kompetitor/target yang sudah terdaftar di trend_sources.
+     */
+    public function getGoogleTrendsNow(string $keyword, string $geo = 'ID'): array
+    {
+        return $this->get('/trends/live', [
+            'keyword' => $keyword,
+            'geo'     => $geo,
+        ]);
+    }
+
+    /**
      * POST /scrape/run
      * Jalankan scraping untuk semua target aktif sekarang juga. Dipakai oleh
      * scheduler harian (php artisan scrape:run) maupun tombol manual di admin panel.

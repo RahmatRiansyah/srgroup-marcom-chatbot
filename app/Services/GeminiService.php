@@ -14,6 +14,15 @@ use Illuminate\Support\Facades\Log;
  * limit, atau Anthropic sedang down). Sengaja dibuat pakai tool-calling asli
  * Gemini (bukan dump context mentah ke prompt) supaya kualitas & gaya jawaban
  * tetap konsisten dengan ClaudeService, walau yang menjawab beda model.
+ *
+ * Soal "web_search": Gemini punya grounding "google_search" bawaan, tapi
+ * (per Juli 2026) tool itu TIDAK BISA digabung dengan functionDeclarations
+ * custom (getTrend, getGoogleTrendsNow, dst) di endpoint generateContent yang
+ * dipakai di sini -- kombinasi built-in + custom tool baru didukung lewat
+ * endpoint "Interactions API" yang masih Preview & cuma untuk model Gemini 3.
+ * Supaya tetap konsisten & jalan di semua model kandidat, "web_search" untuk
+ * Gemini dijalankan LOKAL lewat TavilySearchService (tavily.com), persis
+ * seperti getGoogleTrendsNow -- lihat runTool() & toolDefinitions() di bawah.
  */
 class GeminiService
 {
@@ -26,8 +35,10 @@ class GeminiService
 
     protected int $maxToolRounds = 4;
 
-    public function __construct(protected AnalyticsApiService $analytics)
-    {
+    public function __construct(
+        protected AnalyticsApiService $analytics,
+        protected TavilySearchService $webSearch,
+    ) {
         $this->apiKey = (string) config('services.gemini.key', '');
 
         $primaryModel = (string) config('services.gemini.model', 'gemini-2.5-flash');
@@ -102,7 +113,7 @@ class GeminiService
                 $name = $call['name'] ?? '';
                 $args = $call['args'] ?? [];
 
-                $result = $this->runAnalyticsTool($name, $args);
+                $result = $this->runTool($name, $args);
 
                 $toolCallsLog[] = ['name' => $name, 'input' => $args, 'result' => $result];
 
@@ -183,10 +194,33 @@ class GeminiService
         return ['error' => true, 'message' => $lastError];
     }
 
-    /** Konversi skema tool generik dari trait ke format Gemini (functionDeclarations). */
+    /**
+     * Jalankan satu tool call, baik itu tool analitik dari trait (getTrend,
+     * getCompetitorPrice, getSummary, getGoogleTrendsNow) maupun "web_search"
+     * yang khusus di-handle di sini lewat TavilySearchService (lihat
+     * penjelasan di docblock class).
+     */
+    protected function runTool(string $name, array $args): array
+    {
+        if ($name === 'web_search') {
+            return $this->webSearch->search(
+                $args['query'] ?? '',
+                (int) ($args['num_results'] ?? 5)
+            );
+        }
+
+        return $this->runAnalyticsTool($name, $args);
+    }
+
+    /**
+     * Konversi skema tool generik dari trait ke format Gemini
+     * (functionDeclarations), DITAMBAH definisi "web_search" di baris
+     * terakhir -- beda dari 4 tool trait lainnya, tool ini dieksekusi lewat
+     * TavilySearchService (runTool()), bukan runAnalyticsTool()/AnalyticsApiService.
+     */
     protected function toolDefinitions(): array
     {
-        return collect($this->toolSchemas())->map(fn ($tool) => [
+        $analyticsTools = collect($this->toolSchemas())->map(fn ($tool) => [
             'name'        => $tool['name'],
             'description' => $tool['description'],
             'parameters'  => [
@@ -195,5 +229,21 @@ class GeminiService
                 'required'   => $tool['required'],
             ],
         ])->values()->all();
+
+        return [
+            ...$analyticsTools,
+            [
+                'name'        => 'web_search',
+                'description' => 'Cari di web umum (Google Search) untuk berita/tren terkini yang di luar cakupan Google Trends maupun data internal, mis. kompetitor baru atau isu yang lagi ramai dibicarakan.',
+                'parameters'  => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'query'       => ['type' => 'string', 'description' => "Kata kunci pencarian, misal 'kompetitor baru bubble tea Jakarta 2026'"],
+                        'num_results' => ['type' => 'integer', 'description' => 'Jumlah maksimal hasil, default 5, maksimal 10'],
+                    ],
+                    'required' => ['query'],
+                ],
+            ],
+        ];
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
 use App\Services\ClaudeService;
+use App\Services\GroqService;
 use App\Services\GeminiService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -69,7 +70,7 @@ class ChatController extends Controller
      * yang di baliknya memanggil mesin analisis Python. Ini yang dimaksud
      * "Integrasi LLM + Function Calling" di roadmap Minggu 5.
      */
-    public function send(Request $request, ClaudeService $claude, GeminiService $gemini, $sessionId = null)
+    public function send(Request $request, ClaudeService $claude, GroqService $groq, GeminiService $gemini, $sessionId = null)
     {
         $request->validate([
             'message' => 'required|string',
@@ -106,25 +107,37 @@ class ChatController extends Controller
         }
 
         // 3. Panggil Claude dulu (engine utama). Kalau gagal (token/kredit habis,
-        //    rate limit, atau Anthropic sedang down), otomatis fallback ke Gemini
-        //    supaya chatbot tetap bisa menjawab.
+        //    rate limit, atau Anthropic sedang down), otomatis fallback berantai:
+        //    Claude -> Groq -> Gemini. Groq ditaruh sebelum Gemini karena kuota
+        //    gratisnya jauh lebih lega (puluhan request/menit, ribuan/hari)
+        //    dibanding kuota gratis Gemini yang cuma ~20 request/hari.
         $engine = 'claude';
         $result = $claude->chat($history, $userMessage);
 
         if ($result['error'] ?? false) {
-            Log::warning('ChatController: Claude gagal, fallback ke Gemini', [
-                'session_id'    => $session->id,
-                'claude_error'  => $result['reply'],
+            Log::warning('ChatController: Claude gagal, fallback ke Groq', [
+                'session_id'   => $session->id,
+                'claude_error' => $result['reply'],
+            ]);
+
+            $engine = 'groq';
+            $result = $groq->chat($history, $userMessage);
+        }
+
+        if ($result['error'] ?? false) {
+            Log::warning('ChatController: Groq juga gagal, fallback ke Gemini', [
+                'session_id' => $session->id,
+                'groq_error' => $result['reply'],
             ]);
 
             $engine = 'gemini';
             $result = $gemini->chat($history, $userMessage);
         }
 
-        // Kalau Gemini (fallback) juga gagal, kasih pesan yang jujur ke user
-        // daripada nampilin error mentah dari service.
+        // Kalau ketiga engine (Claude, Groq, Gemini) sama-sama gagal, kasih pesan
+        // yang jujur ke user daripada nampilin error mentah dari service.
         if ($result['error'] ?? false) {
-            $result['reply'] = 'Maaf, chatbot sedang tidak bisa menjawab (Claude & Gemini sama-sama gagal dihubungi). Coba lagi beberapa saat lagi, atau cek log server untuk detail.';
+            $result['reply'] = 'Maaf, chatbot sedang tidak bisa menjawab (Claude, Groq, & Gemini sama-sama gagal dihubungi). Coba lagi beberapa saat lagi, atau cek log server untuk detail.';
         }
 
         // 4. Simpan pesan (hanya jawaban akhir yang disimpan; detail tool_calls/engine
@@ -141,7 +154,7 @@ class ChatController extends Controller
             'session_id' => $session->id,
             'title'      => $session->title,
             'tool_calls' => $result['tool_calls'],
-            'engine'     => $engine, // 'claude' atau 'gemini' (dipakai fallback)
+            'engine'     => $engine, // 'claude' (utama), 'groq' atau 'gemini' (fallback berantai)
         ]);
     }
 

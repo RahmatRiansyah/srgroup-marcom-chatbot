@@ -177,10 +177,21 @@ class ClaudeService
         return ['error' => false, 'data' => $response->json()];
     }
 
-    /** Konversi skema tool generik dari trait ke format Anthropic (input_schema). */
+    /**
+     * Konversi skema tool generik dari trait ke format Anthropic (input_schema),
+     * DITAMBAH server tool bawaan Anthropic "web_search" di baris terakhir.
+     *
+     * web_search ini beda dari getTrend/getCompetitorPrice/getSummary/
+     * getGoogleTrendsNow: bukan kita yang jalankan (bukan lewat
+     * runAnalyticsTool), tapi dieksekusi langsung oleh Anthropic di sisi
+     * mereka -- Claude bisa search web umum & kasih jawaban dengan sitasi
+     * sumber. Ini kenapa tool ini HANYA ditambahkan di sini (ClaudeService),
+     * bukan di trait UsesAnalyticsTools: Groq (format OpenAI) dan Gemini
+     * (format functionDeclarations) tidak mengenal tipe tool ini.
+     */
     protected function toolDefinitions(): array
     {
-        return collect($this->toolSchemas())->map(fn ($tool) => [
+        $customTools = collect($this->toolSchemas())->map(fn ($tool) => [
             'name'        => $tool['name'],
             'description' => $tool['description'],
             'input_schema' => [
@@ -189,5 +200,16 @@ class ClaudeService
                 'required'   => $tool['required'],
             ],
         ])->values()->all();
+
+        return [
+            ...$customTools,
+            [
+                'type'     => 'web_search_20250305',
+                'name'     => 'web_search',
+                // Batasi maksimal 3x panggilan web_search per pesan user,
+                // biar biaya nggak membengkak kalau Claude "kebablasan" cari.
+                'max_uses' => 3,
+            ],
+        ];
     }
 }

@@ -21,6 +21,9 @@
         <!-- Top Header Bar -->
         <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 flex justify-between items-center shadow-lg shrink-0">
             <div class="flex items-center space-x-3">
+                <button type="button" onclick="toggleSidebar()" class="md:hidden shrink-0 text-slate-300 hover:text-white bg-slate-700/60 hover:bg-slate-700 p-2 rounded-lg transition" aria-label="Buka menu">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
                 <div class="bg-indigo-600 text-white p-2 rounded-lg font-bold">AI</div>
                 <div>
                     <h1 class="font-bold text-lg text-white">Marcom Strategy Assistant</h1>
@@ -195,12 +198,18 @@
             } else {
                 // Render teks AI menggunakan marked.js
                 const parsedText = marked.parse(text);
-                const fallbackBadge = engine === 'gemini'
-                    ? `<div class="text-[10px] text-amber-400 mt-1.5 flex items-center gap-1">
+                let fallbackBadge = '';
+                if (engine === 'groq') {
+                    fallbackBadge = `<div class="text-[10px] text-amber-400 mt-1.5 flex items-center gap-1">
                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                         Dijawab pakai Gemini (mode cadangan, Claude sedang tidak bisa diakses)
-                       </div>`
-                    : '';
+                         Dijawab pakai Groq (mode cadangan, Claude sedang tidak bisa diakses)
+                       </div>`;
+                } else if (engine === 'gemini') {
+                    fallbackBadge = `<div class="text-[10px] text-amber-400 mt-1.5 flex items-center gap-1">
+                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                         Dijawab pakai Gemini (mode cadangan, Claude & Groq sedang tidak bisa diakses)
+                       </div>`;
+                }
                 wrapper.innerHTML = `
                     <div class="bg-indigo-600 text-white p-2 rounded-full text-xs font-bold shrink-0">AI</div>
                     <div>

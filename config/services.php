@@ -40,11 +40,32 @@ return [
         'timeout' => env('ANALYTICS_API_TIMEOUT', 10),
     ],
 
+    // Dipakai GeminiService untuk tool "web_search" custom (lihat
+    // TavilySearchService + docblock GeminiService kenapa ini perlu).
+    // Daftar gratis di https://tavily.com untuk dapat API key (1.000
+    // kredit/bulan, tanpa kartu kredit).
+    'tavily' => [
+        'key'     => env('TAVILY_API_KEY'),
+        'timeout' => env('TAVILY_API_TIMEOUT', 10),
+    ],
+
     'anthropic' => [
         'key'   => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
     ],
 
+    // Fallback pertama kalau Claude gagal (lihat GroqService + ChatController).
+    // Dipakai lewat endpoint OpenAI-compatible Groq, jadi format tool calling-nya
+    // mengikuti spesifikasi OpenAI, bukan Anthropic/Google.
+    // Model default GPT-OSS (bukan llama-3.3-70b-versatile lagi) karena tool
+    // bawaan Groq "browser_search" (web_search) cuma didukung di model GPT-OSS
+    // -- lihat docblock GroqService.
+    'groq' => [
+        'key'   => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
+    ],
+
+    // Fallback terakhir kalau Claude & Groq berdua gagal.
     'gemini' => [
         'key'   => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
