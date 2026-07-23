@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\TrendSource;
-use App\Models\TrendPost;
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
+use App\Services\ClaudeService;
+use App\Services\GeminiService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ChatController extends Controller
@@ -60,9 +60,16 @@ class ChatController extends Controller
     }
 
     /**
-     * Kirim pesan user ke AI Gemini dalam sesi aktif.
+     * Kirim pesan user ke Claude dalam sesi aktif.
+     *
+     * Berbeda dari versi sebelumnya: di sini kita TIDAK menempel data
+     * tren/kompetitor secara manual ke prompt. Claude yang memutuskan lewat
+     * tool use (getTrend / getCompetitorPrice / getSummary) kapan perlu
+     * mengambil data real-time — dan data itu selalu lewat AnalyticsApiService,
+     * yang di baliknya memanggil mesin analisis Python. Ini yang dimaksud
+     * "Integrasi LLM + Function Calling" di roadmap Minggu 5.
      */
-    public function send(Request $request, $sessionId = null)
+    public function send(Request $request, ClaudeService $claude, GeminiService $gemini, $sessionId = null)
     {
         $request->validate([
             'message' => 'required|string',
@@ -88,94 +95,54 @@ class ChatController extends Controller
             ]);
         }
 
-        // 2. Ambil data target & kompetitor dari database
-        $sources = TrendSource::all();
-        $latestPosts = TrendPost::with('trendSource')->latest()->take(5)->get();
-
-        $contextText = "Daftar Target & Kompetitor Marcom Aktif saat ini:\n";
-        foreach ($sources as $source) {
-            $contextText .= "- {$source->name} (Platform: {$source->platform})\n";
-        }
-
-        $contextText .= "\nKonten Postingan & Tren Terbaru Kompetitor:\n";
-        foreach ($latestPosts as $post) {
-            $targetName = $post->trendSource->name ?? 'Kompetitor';
-            $contextText .= "- [Target: {$targetName}] Judul: {$post->title} | Konten: \"{$post->content}\"\n";
-        }
-
-        $systemInstruction = "Kamu adalah Asisten Strategi Marcom.\n\n" . $contextText;
-
-        // 3. Ambil 5 riwayat percakapan terakhir HANYA DARI SESI INI (Multi-turn)
+        // 2. Ambil 5 riwayat percakapan terakhir HANYA DARI SESI INI (Multi-turn),
+        //    dikonversi ke format messages Claude (role: user/assistant).
         $chatHistory = $session->messages()->latest()->take(5)->get()->reverse();
 
-        $contents = [];
-        if ($chatHistory->isNotEmpty()) {
-            $isFirstTurn = true;
-            foreach ($chatHistory as $history) {
-                if ($isFirstTurn) {
-                    $contents[] = [
-                        'role' => 'user',
-                        'parts' => [['text' => "[KONTEKS SISTEM]\n" . $systemInstruction . "\n\n[PESAN USER]\n" . $history->message]]
-                    ];
-                    $isFirstTurn = false;
-                } else {
-                    $contents[] = ['role' => 'user', 'parts' => [['text' => $history->message]]];
-                }
-                $contents[] = ['role' => 'model', 'parts' => [['text' => $history->response]]];
-            }
-            $contents[] = ['role' => 'user', 'parts' => [['text' => $userMessage]]];
-        } else {
-            $contents[] = [
-                'role' => 'user',
-                'parts' => [['text' => $systemInstruction . "\n\nPertanyaan User: " . $userMessage]]
-            ];
+        $history = [];
+        foreach ($chatHistory as $turn) {
+            $history[] = ['role' => 'user', 'content' => $turn->message];
+            $history[] = ['role' => 'assistant', 'content' => $turn->response];
         }
 
-        // 4. Panggil API Gemini
-        $apiKey = env('GEMINI_API_KEY');
-        if (!$apiKey) {
-            return response()->json(['reply' => 'Error: GEMINI_API_KEY belum dikonfigurasi']);
+        // 3. Panggil Claude dulu (engine utama). Kalau gagal (token/kredit habis,
+        //    rate limit, atau Anthropic sedang down), otomatis fallback ke Gemini
+        //    supaya chatbot tetap bisa menjawab.
+        $engine = 'claude';
+        $result = $claude->chat($history, $userMessage);
+
+        if ($result['error'] ?? false) {
+            Log::warning('ChatController: Claude gagal, fallback ke Gemini', [
+                'session_id'    => $session->id,
+                'claude_error'  => $result['reply'],
+            ]);
+
+            $engine = 'gemini';
+            $result = $gemini->chat($history, $userMessage);
         }
 
-        $endpoints = [
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent',
-        ];
-        $lastError = '';
-        foreach ($endpoints as $endpoint) {
-            try {
-                $response = Http::withoutVerifying()->post("{$endpoint}?key={$apiKey}", [
-                    'contents' => $contents
-                ]);
-
-                if ($response->successful()) {
-                    $responseData = $response->json();
-                    $aiReply = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? null;
-
-                    if ($aiReply) {
-                        // Simpan Pesan dengan chat_session_id
-                        ChatMessage::create([
-                            'user_id'         => $userId,
-                            'chat_session_id' => $session->id,
-                            'message'         => $userMessage,
-                            'response'        => $aiReply,
-                        ]);
-
-                        return response()->json([
-                            'reply'      => $aiReply,
-                            'session_id' => $session->id,
-                            'title'      => $session->title
-                        ]);
-                    }
-                }
-                $lastError = $response->body();
-            } catch (\Exception $e) {
-                $lastError = $e->getMessage();
-            }
+        // Kalau Gemini (fallback) juga gagal, kasih pesan yang jujur ke user
+        // daripada nampilin error mentah dari service.
+        if ($result['error'] ?? false) {
+            $result['reply'] = 'Maaf, chatbot sedang tidak bisa menjawab (Claude & Gemini sama-sama gagal dihubungi). Coba lagi beberapa saat lagi, atau cek log server untuk detail.';
         }
 
-        return response()->json(['reply' => 'Gagal menghubungkan ke AI Gemini: ' . $lastError]);
+        // 4. Simpan pesan (hanya jawaban akhir yang disimpan; detail tool_calls/engine
+        //    dikirim ke frontend untuk transparansi, tidak disimpan ke DB).
+        ChatMessage::create([
+            'user_id'         => $userId,
+            'chat_session_id' => $session->id,
+            'message'         => $userMessage,
+            'response'        => $result['reply'],
+        ]);
+
+        return response()->json([
+            'reply'      => $result['reply'],
+            'session_id' => $session->id,
+            'title'      => $session->title,
+            'tool_calls' => $result['tool_calls'],
+            'engine'     => $engine, // 'claude' atau 'gemini' (dipakai fallback)
+        ]);
     }
 
     /**

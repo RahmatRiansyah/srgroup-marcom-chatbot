@@ -34,5 +34,20 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'analytics' => [
+        'url'     => env('ANALYTICS_API_URL', 'http://127.0.0.1:8001'),
+        'key'     => env('ANALYTICS_API_KEY'),
+        'timeout' => env('ANALYTICS_API_TIMEOUT', 10),
+    ],
+
+    'anthropic' => [
+        'key'   => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
+    ],
+
+    'gemini' => [
+        'key'   => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+    ],
 
 ];

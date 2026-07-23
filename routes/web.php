@@ -3,7 +3,9 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\DataSourceController;
+use App\Http\Controllers\Admin\ScrapeLogController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,9 +19,10 @@ Route::get('/', function () {
 });
 
 // Halaman Dashboard (Memerlukan Login & Email Verified)
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 // Group Route khusus Pengguna yang Sudah Login (Authenticated Users)
 Route::middleware('auth')->group(function () {
@@ -48,6 +51,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/datasource/{id}/edit', [DataSourceController::class, 'edit'])->name('datasource.edit');
         Route::put('/datasource/{id}', [DataSourceController::class, 'update'])->name('datasource.update');
         Route::delete('/datasource/{id}', [DataSourceController::class, 'destroy'])->name('datasource.destroy');
+
+        Route::get('/scrape-log', [ScrapeLogController::class, 'index'])->name('scrapelog.index');
+        Route::post('/scrape-log/run', [ScrapeLogController::class, 'runNow'])->name('scrapelog.run');
     });
 
 

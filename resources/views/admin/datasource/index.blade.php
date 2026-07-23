@@ -102,6 +102,7 @@
                                 <th class="px-6 py-3.5">Platform</th>
                                 <th class="px-6 py-3.5">URL</th>
                                 <th class="px-6 py-3.5">Status</th>
+                                <th class="px-6 py-3.5 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-700/50">
@@ -129,10 +130,20 @@
                                             Aktif
                                         </span>
                                     </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <!-- Form Hapus Target -->
+                                        <form action="{{ route('admin.datasource.destroy', $source->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus target ini?');" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-6 text-center text-slate-500">
+                                    <td colspan="5" class="px-6 py-6 text-center text-slate-500">
                                         Belum ada data source yang didaftarkan.
                                     </td>
                                 </tr>
@@ -141,61 +152,6 @@
                     </table>
                 </div>
             </div>
-        <table class="w-full text-sm text-left text-slate-300">
-            <thead class="text-xs uppercase bg-slate-700/50 text-slate-400">
-                <tr>
-                    <th class="px-6 py-3.5">Nama / Keyword</th>
-                    <th class="px-6 py-3.5">Platform</th>
-                    <th class="px-6 py-3.5">URL</th>
-                    <th class="px-6 py-3.5">Status</th>
-                    <th class="px-6 py-3.5 text-right">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-700/50">
-                @forelse($sources as $source)
-                    <tr class="hover:bg-slate-700/30 transition">
-                        <td class="px-6 py-4 font-semibold text-white">
-                            {{ $source->name }}
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-lg text-xs font-medium">
-                                {{ $source->platform }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4">
-                            @if($source->source_url)
-                                <a href="{{ $source->source_url }}" target="_blank" class="text-indigo-400 hover:underline truncate inline-block max-w-xs">
-                                    {{ $source->source_url }}
-                                </a>
-                                @else
-                                <span class="text-slate-500">-</span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="px-2.5 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                Aktif
-                            </span>
-                            </td>
-                        <td class="px-6 py-4 text-right">
-                            <!-- Form Hapus Target -->
-                            <form action="{{ route('admin.datasource.destroy', $source->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus target ini?');" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition">
-                                    Hapus
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-6 py-6 text-center text-slate-500">
-                            Belum ada data source yang didaftarkan.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
         </main>
     </div>
 

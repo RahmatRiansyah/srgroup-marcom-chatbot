@@ -94,6 +94,13 @@
                         <span>Data Target / Kompetitor</span>
                     </a>
 
+                    <!-- Log Scraping / Scheduler -->
+                    <a href="{{ route('admin.scrapelog.index') }}" 
+                       class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('admin.scrapelog.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white' }}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Log Scraping</span>
+                    </a>
+
                 </div>
             </div>
 

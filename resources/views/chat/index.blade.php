@@ -40,6 +40,20 @@
                         Halo! Saya Asisten Strategi Marcom Anda. Ada yang bisa saya bantu terkait analisis tren atau strategi campaign kompetitor hari ini?
                     </div>
                 </div>
+
+                <!-- Quick Prompts / Contoh Pertanyaan -->
+                <div class="pl-11 flex flex-wrap gap-2" id="quick-prompts">
+                    @foreach ([
+                        'Produk apa yang lagi naik daun minggu ini?',
+                        'Ringkasan aktivitas kompetitor hari ini',
+                        'Ada perubahan apa dari kompetitor utama kita?',
+                    ] as $prompt)
+                        <button
+                            type="button"
+                            class="quick-prompt-btn text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-indigo-500 px-3 py-2 rounded-xl transition text-left"
+                        >{{ $prompt }}</button>
+                    @endforeach
+                </div>
             @else
                 <!-- Render Riwayat Pesan dari Database -->
                 @foreach($messages as $msg)
@@ -101,6 +115,16 @@
         // Auto-scroll ke paling bawah saat halaman selesai dimuat
         chatBox.scrollTop = chatBox.scrollHeight;
 
+        // Quick Prompts: klik chip -> isi input & langsung kirim
+        document.querySelectorAll('.quick-prompt-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                userMessageInput.value = btn.textContent.trim();
+                const quickPrompts = document.getElementById('quick-prompts');
+                if (quickPrompts) quickPrompts.remove();
+                chatForm.requestSubmit();
+            });
+        });
+
         // Listener saat form dikirim
         chatForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -139,7 +163,7 @@
                 removeLoading(loadingId);
                 
                 if (data.reply) {
-                    appendMessage('ai', data.reply);
+                    appendMessage('ai', data.reply, data.engine);
 
                     // Jika ini sesi baru, alihkan ke URL sesi spesifik
                     if (!sessionId && data.session_id) {
@@ -158,7 +182,7 @@
             }
         });
 
-        function appendMessage(sender, text) {
+        function appendMessage(sender, text, engine) {
             const wrapper = document.createElement('div');
             wrapper.className = `flex items-start space-x-3 ${sender === 'user' ? 'justify-end' : ''}`;
 
@@ -171,10 +195,19 @@
             } else {
                 // Render teks AI menggunakan marked.js
                 const parsedText = marked.parse(text);
+                const fallbackBadge = engine === 'gemini'
+                    ? `<div class="text-[10px] text-amber-400 mt-1.5 flex items-center gap-1">
+                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                         Dijawab pakai Gemini (mode cadangan, Claude sedang tidak bisa diakses)
+                       </div>`
+                    : '';
                 wrapper.innerHTML = `
                     <div class="bg-indigo-600 text-white p-2 rounded-full text-xs font-bold shrink-0">AI</div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl rounded-tl-none p-4 max-w-2xl text-slate-200 text-sm leading-relaxed space-y-2 prose prose-invert max-w-none">
-                        ${parsedText}
+                    <div>
+                        <div class="bg-slate-800 border border-slate-700 rounded-2xl rounded-tl-none p-4 max-w-2xl text-slate-200 text-sm leading-relaxed space-y-2 prose prose-invert max-w-none">
+                            ${parsedText}
+                        </div>
+                        ${fallbackBadge}
                     </div>
                 `;
             }
