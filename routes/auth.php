@@ -8,14 +8,12 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -36,6 +34,15 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('two-factor', [TwoFactorController::class, 'index'])
+        ->name('two-factor.index');
+
+    Route::post('two-factor', [TwoFactorController::class, 'store'])
+        ->name('two-factor.store');
+
+    Route::get('two-factor/resend', [TwoFactorController::class, 'resend'])
+        ->name('two-factor.resend');
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

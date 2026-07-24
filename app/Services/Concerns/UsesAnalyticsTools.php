@@ -22,7 +22,8 @@ trait UsesAnalyticsTools
         return match ($name) {
             'getTrend' => $this->analytics->getTrend(
                 $input['keyword'] ?? null,
-                (int) ($input['limit'] ?? 20)
+                (int) ($input['limit'] ?? 20),
+                (int) ($input['days'] ?? 30)
             ),
             'getCompetitorPrice' => $this->analytics->getCompetitorPrice(
                 $input['nama'] ?? '',
@@ -71,6 +72,19 @@ atau error, katakan terus terang datanya belum tersedia — jangan menebak-nebak
 memakai data live (getGoogleTrendsNow/web_search), sebutkan ke user bahwa itu data umum
 dari luar sistem, bukan hasil pemantauan khusus tim.
 
+PENTING soal kesegaran data: getTrend & getCompetitorPrice mengembalikan field
+"newest_post_age_days" (umur postingan terbaru yang ditemukan, dalam hari). Kamu WAJIB
+memperhatikan angka ini:
+- Kalau newest_post_age_days masih kecil (beberapa hari), boleh sampaikan datanya sebagai
+  aktivitas terkini.
+- Kalau angkanya cukup besar (mis. lebih dari 1-2 minggu) atau hasilnya kosong, JANGAN
+  menyajikannya seolah itu tren yang sedang terjadi sekarang -- katakan terus terang bahwa
+  data pemantauan tim untuk topik ini sudah agak lama / belum ada yang baru, lalu tawarkan
+  cek getGoogleTrendsNow atau web_search untuk gambaran yang lebih update saat ini.
+- Jangan pernah mengarang atau mengasumsikan data itu "baru" tanpa mengecek field ini
+  dulu, karena tugas utamamu adalah analisis TREN yang harus selalu relate dengan kondisi
+  sekarang, bukan histori lama.
+
 Untuk sapaan atau pertanyaan strategi umum yang tidak butuh data spesifik, jawab langsung
 tanpa tools. Selalu jawab dalam Bahasa Indonesia: singkat, jelas, dan actionable untuk tim
 marketing.
@@ -83,10 +97,11 @@ TEXT;
         return [
             [
                 'name'        => 'getTrend',
-                'description' => 'Cari postingan/tren yang relevan dengan sebuah kata kunci, lintas semua sumber/kompetitor yang dipantau.',
+                'description' => 'Cari postingan/tren yang relevan dengan sebuah kata kunci, lintas semua sumber/kompetitor yang dipantau. Hasil SELALU dibatasi ke rentang hari terakhir (lihat "days") supaya datanya relevan dengan kondisi sekarang, bukan data basi.',
                 'properties'  => [
                     'keyword' => ['type' => 'string', 'description' => "Kata kunci pencarian, misal 'diskon lebaran'"],
                     'limit'   => ['type' => 'integer', 'description' => 'Jumlah maksimal hasil, default 20'],
+                    'days'    => ['type' => 'integer', 'description' => 'Batasi hasil ke N hari terakhir saja, default 30. Perbesar cuma kalau user memang minta data historis/lama.'],
                 ],
                 'required' => [],
             ],

@@ -28,6 +28,19 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if ($user) {
+            $code = $user->generateTwoFactorCode();
+            try {
+                $user->notify(new \App\Notifications\SendTwoFactorCode($code));
+            } catch (\Exception $e) {
+                \Log::warning('Email OTP delivery failed: ' . $e->getMessage());
+            }
+
+            return redirect()->route('two-factor.index');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

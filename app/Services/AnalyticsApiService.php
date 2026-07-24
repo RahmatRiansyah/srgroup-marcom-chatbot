@@ -34,14 +34,21 @@ class AnalyticsApiService
     }
 
     /**
-     * GET /trends?keyword=...
+     * GET /trends?keyword=...&days=...
      * Cari postingan/tren yang relevan dengan sebuah keyword.
+     *
+     * $days membatasi hasil hanya postingan N hari terakhir (default 30) --
+     * sengaja tidak dibiarkan tanpa batas, supaya chatbot tidak pernah
+     * menyajikan data lama sebagai "tren sekarang". Endpoint akan
+     * mengembalikan newest_post_age_days di response supaya kesegaran
+     * datanya bisa disebutkan eksplisit ke user.
      */
-    public function getTrend(?string $keyword = null, int $limit = 20): array
+    public function getTrend(?string $keyword = null, int $limit = 20, int $days = 30): array
     {
         return $this->get('/trends', [
             'keyword' => $keyword,
             'limit'   => $limit,
+            'days'    => $days,
         ]);
     }
 

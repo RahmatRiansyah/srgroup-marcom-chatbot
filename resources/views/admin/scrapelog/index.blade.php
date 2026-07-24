@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Log Scraping - SR Group</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/srgroup-logo-white.svg') }}">
     <!-- CDN Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex font-sans overflow-hidden">
+<body class="bg-[#fbf9f8] text-[#1b1c1c] min-h-screen flex font-sans overflow-hidden">
 
     <!-- 1. Include Sidebar Navigasi -->
     @include('components.sidebar')
@@ -17,14 +19,14 @@
     <div class="flex-1 flex flex-col h-screen overflow-y-auto">
 
         <!-- Top Header Bar -->
-        <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 flex justify-between items-center shadow-lg shrink-0">
+        <header class="bg-[#ffffff] border-b border-[#e5e5e1] py-4 px-6 flex justify-between items-center shadow-sm shadow-[#0000000d] shrink-0">
             <div class="flex items-center gap-3">
-                <button type="button" onclick="toggleSidebar()" class="md:hidden shrink-0 text-slate-300 hover:text-white bg-slate-700/60 hover:bg-slate-700 p-2 rounded-lg transition" aria-label="Buka menu">
+                <button type="button" onclick="toggleSidebar()" class="md:hidden shrink-0 text-[#1b1c1c] hover:text-[#1b1c1c] bg-[#fbf9f8] hover:bg-[#f5f3f3] p-2 rounded-lg transition" aria-label="Buka menu">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <div>
-                    <h1 class="font-bold text-lg text-white">Log Scraping</h1>
-                    <p class="text-xs text-slate-400">Riwayat & status pengambilan data harian dari mesin analisis Python</p>
+                    <h1 class="font-bold text-lg text-[#1b1c1c]">Log Scraping</h1>
+                    <p class="text-xs text-[#524439]">Riwayat & status pengambilan data harian dari mesin analisis Python</p>
                 </div>
             </div>
 
@@ -32,7 +34,7 @@
                 @csrf
                 <button
                     type="submit"
-                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl transition text-sm shadow-md hover:shadow-indigo-500/20 flex items-center gap-2"
+                    class="bg-[#885215] hover:bg-[#784a15] text-[#ffffff] font-medium px-5 py-2.5 rounded-xl transition text-sm shadow-sm shadow-[#885215]/20 flex items-center gap-2"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     Jalankan Sekarang
@@ -45,27 +47,27 @@
 
             <!-- Alert Success -->
             @if(session('success'))
-                <div class="bg-emerald-500/10 border border-emerald-500/50 text-emerald-400 px-4 py-3 rounded-xl text-sm flex items-center justify-between">
+                <div class="bg-[#8CCEAD]/10 border border-[#8CCEAD]/20 text-[#8CCEAD] px-4 py-3 rounded-xl text-sm flex items-center justify-between">
                     <span>{{ session('success') }}</span>
                 </div>
             @endif
 
             <!-- Info: cron -->
-            <div class="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-xs text-slate-400">
+            <div class="bg-[#fbf9f8] border border-[#e5e5e1] rounded-xl px-4 py-3 text-xs text-[#524439]">
                 Scraping otomatis dijadwalkan tiap hari jam 06:00. Pastikan server menjalankan
-                <code class="text-slate-300 bg-slate-900 px-1.5 py-0.5 rounded">php artisan schedule:run</code>
+                <code class="text-[#1b1c1c] bg-[#ffffff] px-1.5 py-0.5 rounded">php artisan schedule:run</code>
                 tiap menit lewat cron supaya jadwal ini benar-benar berjalan.
             </div>
 
             <!-- Tabel Riwayat -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
-                <div class="p-4 border-b border-slate-700">
-                    <h3 class="text-base font-semibold text-white">Riwayat Scraping</h3>
+            <div class="bg-[#ffffff] border border-[#e5e5e1] rounded-2xl overflow-hidden shadow-sm shadow-[#0000000d]">
+                <div class="p-4 border-b border-[#e5e5e1]">
+                    <h3 class="text-base font-semibold text-[#1b1c1c]">Riwayat Scraping</h3>
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left text-slate-300">
-                        <thead class="text-xs uppercase bg-slate-700/50 text-slate-400">
+                    <table class="w-full text-sm text-left text-[#524439]">
+                        <thead class="text-xs uppercase bg-[#f5f3f3] text-[#524439]">
                             <tr>
                                 <th class="px-6 py-3.5">Waktu</th>
                                 <th class="px-6 py-3.5">Status</th>
@@ -75,25 +77,25 @@
                                 <th class="px-6 py-3.5">Catatan</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-700/50">
+                        <tbody class="divide-y divide-[#e5e5e1]">
                             @forelse($logs as $log)
-                                <tr class="hover:bg-slate-700/30 transition align-top">
-                                    <td class="px-6 py-4 text-slate-400 whitespace-nowrap">
+                                <tr class="hover:bg-[#fbf9f8] transition align-top">
+                                    <td class="px-6 py-4 text-[#885215] whitespace-nowrap">
                                         {{ $log->created_at->format('d M Y, H:i') }}
                                     </td>
                                     <td class="px-6 py-4">
                                         @if($log->status === 'success')
-                                            <span class="px-2.5 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">Berhasil</span>
+                                            <span class="px-2.5 py-1 text-xs font-medium text-[#8CCEAD] bg-[#8CCEAD]/10 border border-[#8CCEAD]/20 rounded-lg">Berhasil</span>
                                         @elseif($log->status === 'partial')
-                                            <span class="px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg">Sebagian</span>
+                                            <span class="px-2.5 py-1 text-xs font-medium text-[#885215] bg-[#f4e3d6] border border-[#e7c5a6] rounded-lg">Sebagian</span>
                                         @else
-                                            <span class="px-2.5 py-1 text-xs font-medium text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg">Gagal</span>
+                                            <span class="px-2.5 py-1 text-xs font-medium text-[#885215] bg-[#f4e3d6] border border-[#e7c5a6] rounded-lg">Gagal</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">{{ $log->total_targets }}</td>
-                                    <td class="px-6 py-4 text-emerald-400 font-medium">{{ $log->success_count }}</td>
-                                    <td class="px-6 py-4 text-rose-400 font-medium">{{ $log->failed_count }}</td>
-                                    <td class="px-6 py-4 text-slate-400 max-w-sm">
+                                    <td class="px-6 py-4 text-[#1b1c1c] font-medium">{{ $log->success_count }}</td>
+                                    <td class="px-6 py-4 text-[#885215] font-medium">{{ $log->failed_count }}</td>
+                                    <td class="px-6 py-4 text-[#524439] max-w-sm">
                                         @if($log->message)
                                             <span>{{ $log->message }}</span>
                                         @elseif($log->details)
@@ -101,20 +103,20 @@
                                                 $failedTargets = collect($log->details)->where('status', 'failed');
                                             @endphp
                                             @if($failedTargets->isNotEmpty())
-                                                <span class="text-xs">
+                                                <span class="text-xs text-[#524439]">
                                                     Gagal: {{ $failedTargets->pluck('name')->implode(', ') }}
                                                 </span>
                                             @else
-                                                <span class="text-slate-600">-</span>
+                                                <span class="text-[#847467]">-</span>
                                             @endif
                                         @else
-                                            <span class="text-slate-600">-</span>
+                                            <span class="text-[#847467]">-</span>
                                         @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-6 text-center text-slate-500">
+                                    <td colspan="6" class="px-6 py-6 text-center text-[#847467]">
                                         Belum ada riwayat scraping. Klik "Jalankan Sekarang" untuk memulai.
                                     </td>
                                 </tr>
@@ -124,7 +126,7 @@
                 </div>
 
                 @if($logs->hasPages())
-                    <div class="p-4 border-t border-slate-700">
+                    <div class="p-4 border-t border-[#e5e5e1]">
                         {{ $logs->links() }}
                     </div>
                 @endif

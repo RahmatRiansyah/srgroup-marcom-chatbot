@@ -59,6 +59,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/scrape-log/run', [ScrapeLogController::class, 'runNow'])->name('scrapelog.run');
 
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
         Route::put('/users/{user}/role', [UserManagementController::class, 'updateRole'])->name('users.role');
         Route::put('/users/{user}/toggle-active', [UserManagementController::class, 'toggleActive'])->name('users.toggle-active');
     });

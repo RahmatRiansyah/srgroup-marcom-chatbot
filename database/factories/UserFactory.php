@@ -30,7 +30,25 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'role' => 'member',
+            'is_active' => true,
         ];
+    }
+
+    /** State: buat user dengan role admin. */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+        ]);
+    }
+
+    /** State: buat user yang dinonaktifkan (is_active = false). */
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
+        ]);
     }
 
     /**
