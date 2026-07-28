@@ -11,9 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Hanya SecurityHeaders yang dipasang global di web
         $middleware->web(append: [
-            \App\Http\Middleware\EnsureTwoFactorVerified::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
+
+        // Route middleware alias
         $middleware->alias([
             'admin'     => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'active'    => \App\Http\Middleware\EnsureUserIsActive::class,

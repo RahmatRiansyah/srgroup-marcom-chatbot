@@ -38,9 +38,11 @@ Route::middleware('auth')->group(function () {
         ->name('two-factor.index');
 
     Route::post('two-factor', [TwoFactorController::class, 'store'])
+        ->middleware('throttle:5,1')
         ->name('two-factor.store');
 
     Route::get('two-factor/resend', [TwoFactorController::class, 'resend'])
+        ->middleware('throttle:3,1')
         ->name('two-factor.resend');
 
     Route::get('verify-email', EmailVerificationPromptController::class)

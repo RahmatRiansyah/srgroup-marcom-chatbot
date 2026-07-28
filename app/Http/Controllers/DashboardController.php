@@ -8,8 +8,11 @@ use App\Models\TrendPost;
 use App\Models\ChatSession;
 use App\Models\MetaAccountSnapshot;
 use App\Models\MetaPost;
+use App\Models\MetaSyncLog;
+use App\Models\ScrapeLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
@@ -39,6 +42,30 @@ class DashboardController extends Controller
         $metaBestPost = MetaPost::orderByRaw('COALESCE(engagement_rate_reach, engagement_rate_followers, 0) DESC')->first();
         $metaLastSyncedAt = MetaPost::max('fetched_at');
 
+        // 5. Status Operasional -- log terbaru dari scraping kompetitor
+        //    (App\Jobs\RunScrapeJob) dan sync Meta (App\Console\Commands
+        //    yang menulis ke meta_sync_logs), biar kelihatan di dashboard
+        //    tanpa buka halaman admin masing-masing dulu.
+        $latestScrapeLog = ScrapeLog::orderBy('created_at', 'desc')->first();
+        $latestMetaSyncLog = MetaSyncLog::orderBy('created_at', 'desc')->first();
+
+        // 6. Tren Aktivitas Kompetitor -- jumlah TrendPost baru per hari,
+        //    14 hari terakhir. Hari tanpa data tetap ditampilkan dengan
+        //    nilai 0 supaya sumbu chart tidak bolong.
+        $rawTrendCounts = TrendPost::where('created_at', '>=', Carbon::now()->subDays(13)->startOfDay())
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as total'))
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
+        $trendLabels = [];
+        $trendCounts = [];
+        for ($i = 13; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $key = $date->format('Y-m-d');
+            $trendLabels[] = $date->translatedFormat('d M');
+            $trendCounts[] = (int) ($rawTrendCounts[$key] ?? 0);
+        }
+
         return view('dashboard', compact(
             'totalSources',
             'totalPosts',
@@ -48,7 +75,11 @@ class DashboardController extends Controller
             'metaSnapshot',
             'metaAvgEngagementRate',
             'metaBestPost',
-            'metaLastSyncedAt'
+            'metaLastSyncedAt',
+            'latestScrapeLog',
+            'latestMetaSyncLog',
+            'trendLabels',
+            'trendCounts'
         ));
     }
 }

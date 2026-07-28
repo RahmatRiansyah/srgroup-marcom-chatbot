@@ -17,6 +17,13 @@ class ChatMessage extends Model
         'message',
         'response',
         'engine',
+        'tool_calls',
+    ];
+
+    // tool_calls disimpan sebagai JSON di DB, otomatis di-decode jadi array
+    // PHP saat dibaca (dipakai fitur Auto-Chart di resources/views/chat/index.blade.php)
+    protected $casts = [
+        'tool_calls' => 'array',
     ];
 
     // Relasi balik ke data User yang sedang login

@@ -190,18 +190,22 @@ class ChatController extends Controller
             }
         }
 
-        // 4. Simpan pesan (hanya jawaban akhir yang disimpan; detail tool_calls
-        //    dikirim ke frontend untuk transparansi, tidak disimpan ke DB).
-        //    'engine' DISIMPAN (item 9: tracking proporsi pemakaian Claude vs
-        //    Groq vs Gemini) -- null kalau semua engine gagal/limit, supaya
-        //    gampang di-query ("berapa % pesan yang gagal total") daripada
-        //    dicampur sebagai string 'none'.
+        // 4. Simpan pesan. 'engine' DISIMPAN (item 9: tracking proporsi
+        //    pemakaian Claude vs Groq vs Gemini) -- null kalau semua engine
+        //    gagal/limit, supaya gampang di-query ("berapa % pesan yang
+        //    gagal total") daripada dicampur sebagai string 'none'.
+        //    'tool_calls' SEKARANG JUGA DISIMPAN (sebelumnya hanya dikirim ke
+        //    frontend lalu dibuang) supaya fitur Auto-Chart bisa merender
+        //    ulang grafik dari data getSummary/getEngagement/getMetaPosts/
+        //    getGoogleTrendsNow saat riwayat sesi dibuka lagi, bukan cuma
+        //    saat respons live pertama kali diterima.
         ChatMessage::create([
             'user_id'         => $userId,
             'chat_session_id' => $session->id,
             'message'         => $userMessage,
             'response'        => $result['reply'],
             'engine'          => $engine,
+            'tool_calls'      => $result['tool_calls'] ?? [],
         ]);
 
         return response()->json([

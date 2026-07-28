@@ -10,16 +10,48 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/srgroup-logo-white.svg') }}">
     
     <!-- CDN Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @else
+        <script src="https://cdn.tailwindcss.com"></script>
+    @endif
     
     <!-- CDN Marked.js untuk render Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- CDN DOMPurify -- WAJIB dipakai sebelum innerHTML, karena balasan AI bisa
-         memuat teks hasil scraping web pihak ketiga yang tidak kita kontrol -->
+    <!-- CDN DOMPurify -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    <!-- CDN Chart.js -- untuk fitur Auto-Chart (render grafik otomatis dari
+         data numerik tool getSummary/getEngagement/getMetaPosts/getGoogleTrendsNow) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 
-    <!-- Custom CSS untuk Scrollbar & Styling Tabel AI -->
+    <!-- Custom CSS untuk Scrollbar, Tabel, & Reset Focus Browser -->
     <style>
+        /* Reset Total Focus & Outline Browser */
+        *, 
+        *::before, 
+        *::after,
+        *:focus, 
+        *:focus-visible, 
+        input:focus, 
+        input:focus-visible, 
+        form:focus, 
+        form:focus-visible,
+        button:focus,
+        button:focus-visible {
+            outline: none !important;
+            outline-style: none !important;
+            outline-width: 0 !important;
+            outline-offset: 0 !important;
+            box-shadow: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+        }
+
+        /* Border & Ring Cokelat Mengikuti Rounded Form */
+        #chat-form:focus-within {
+            border-color: #885215 !important;
+            box-shadow: 0 0 0 2px rgba(136, 82, 21, 0.2) !important;
+        }
+
         /* Smooth Scrollbar */
         #chat-box::-webkit-scrollbar {
             width: 6px;
@@ -35,7 +67,7 @@
             background: #c8c6c5;
         }
 
-        /* Styling Lengkap & Rapi untuk Tabel Hasil Output AI */
+        /* Styling Rapi untuk Tabel Output AI */
         .ai-content table {
             width: 100%;
             border-collapse: collapse;
@@ -138,7 +170,7 @@
                 <!-- Render Riwayat Pesan -->
                 @foreach($messages as $msg)
                     @if($msg->role === 'user' || isset($msg->message))
-                        <!-- Box Pesan User (Rata Kanan & Fleksibel Mengikuti Kalimat) -->
+                        <!-- Box Pesan User -->
                         <div class="flex justify-end my-2">
                             <div class="bg-[#f0eee9] border border-[#e2e0d9] text-[#1b1c1c] rounded-2xl px-4 py-2.5 max-w-[85%] sm:max-w-[75%] w-fit text-sm leading-relaxed font-medium shadow-xs">
                                 {{ trim($msg->message ?? $msg->content) }}
@@ -147,11 +179,14 @@
                     @endif
 
                     @if($msg->role === 'assistant' || isset($msg->response))
-                        <!-- Box Balasan AI (Full Width Sebelah Kiri) -->
+                        <!-- Box Balasan AI -->
                         <div class="w-full my-2">
                             <div class="bg-white border border-[#e5e5e1] rounded-2xl p-4 sm:p-5 text-[#1b1c1c] text-sm leading-relaxed prose prose-sm max-w-none shadow-xs overflow-x-auto ai-content">
-                                {!! \Illuminate\Support\Str::markdown($msg->response ?? $msg->content) !!}
+                                {!! \Illuminate\Support\Str::markdown($msg->response ?? $msg->content, ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
                             </div>
+                            {{-- Slot Auto-Chart utk riwayat: diisi JS setelah load lewat data JSON di bawah --}}
+                            <div class="chart-slot"></div>
+                            <script type="application/json" class="tool-calls-json">@json($msg->tool_calls ?? [])</script>
                         </div>
                     @endif
                 @endforeach
@@ -183,8 +218,8 @@
                     </div>
                 </div>
 
-                <!-- Input Box & Tombol Kirim -->
-                <form id="chat-form" class="relative flex items-center bg-white border border-[#e5e5e1] focus-within:border-[#885215] focus-within:ring-2 focus-within:ring-[#885215]/20 rounded-2xl transition-all shadow-sm">
+                <!-- Input Box & Tombol Kirim (Form Diperbaiki: Rounded-2xl + Overflow-hidden) -->
+                <form id="chat-form" class="relative flex items-center bg-white border border-[#e5e5e1] rounded-2xl overflow-hidden transition-all shadow-sm">
                     <input 
                         type="text" 
                         id="user-message" 
@@ -192,12 +227,12 @@
                         placeholder="Ketik pesan atau pertanyaan strategi marcom..." 
                         required 
                         autocomplete="off"
-                        class="w-full bg-transparent text-[#1b1c1c] text-sm py-3.5 pl-4 pr-12 focus:outline-none placeholder:text-[#a39a92]"
+                        class="w-full bg-transparent text-[#1b1c1c] text-sm py-3.5 pl-4 pr-12 border-none outline-none placeholder:text-[#a39a92]"
                     >
                     <button 
                         type="submit" 
                         id="send-btn"
-                        class="absolute right-2 p-2 rounded-xl bg-[#885215] hover:bg-[#a3692a] text-white transition-all shadow-xs flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                        class="absolute right-2 p-2 rounded-xl bg-[#885215] hover:bg-[#704210] active:bg-[#5a350d] text-white transition-all shadow-xs flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Kirim Pesan"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
@@ -359,10 +394,9 @@
                 removeLoading(loadingId);
 
                 if (response.status === 429) {
-                    // Kena rate limit (throttle:20,1 di routes/web.php)
                     appendMessage('ai', 'Terlalu banyak pesan dalam waktu singkat. Tunggu sebentar lalu coba lagi.');
                 } else if (data.reply) {
-                    appendMessage('ai', data.reply, data.engine, data.engine_limited);
+                    appendMessage('ai', data.reply, data.engine, data.engine_limited, data.tool_calls);
 
                     if (!sessionId && data.session_id) {
                         window.location.href = `/chat/${data.session_id}`;
@@ -381,7 +415,7 @@
             }
         });
 
-        function appendMessage(sender, text, engine, engineLimited) {
+        function appendMessage(sender, text, engine, engineLimited, toolCalls) {
             const wrapper = document.createElement('div');
             
             if (sender === 'user') {
@@ -393,9 +427,6 @@
                 `;
             } else {
                 wrapper.className = 'w-full my-2';
-                // Balasan AI bisa memuat konten hasil scraping/tool-call yang tidak
-                // kita kontrol -- selalu sanitasi HTML hasil marked.parse() sebelum
-                // di-render, supaya tag <script>/onerror dsb tidak bisa dieksekusi.
                 const parsedText = DOMPurify.sanitize(marked.parse(text));
                 let fallbackBadge = '';
                 
@@ -421,12 +452,158 @@
                         ${parsedText}
                     </div>
                     ${fallbackBadge}
+                    <div class="chart-slot"></div>
                 `;
             }
 
             chatBox.appendChild(wrapper);
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            if (sender !== 'user') {
+                renderToolCharts(toolCalls, wrapper.querySelector('.chart-slot'));
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
         }
+
+        // ==========================================================
+        // AUTO-CHART -- render grafik otomatis dari data numerik yang
+        // dikembalikan tool getSummary/getEngagement/getMetaPosts/
+        // getGoogleTrendsNow (lihat UsesAnalyticsTools.php & Analytics
+        // ApiService.php di backend utk bentuk data aslinya). Tool lain
+        // (getTrend, getCompetitorPrice, web_search) sengaja TIDAK
+        // dibuatkan chart -- isinya caption/teks, bukan deret angka.
+        // ==========================================================
+        const CHART_BRAND = '#885215';
+        const CHART_BRAND_SOFT = 'rgba(136, 82, 21, 0.15)';
+        const CHART_PALETTE = ['#885215', '#2f6f4f', '#2a5b8c', '#a3572a', '#6b5b95'];
+
+        function chartShortDate(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            if (isNaN(d)) return String(value).slice(0, 10);
+            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+        }
+
+        function chartTruncate(text, max) {
+            if (!text) return '';
+            return text.length > max ? text.slice(0, max - 1) + '…' : text;
+        }
+
+        // Ubah satu tool_call { name, input, result } jadi config chart, atau
+        // null kalau tool ini memang tidak relevan / hasilnya kosong/error.
+        function buildChartConfigFromToolCall(tool) {
+            if (!tool || !tool.name) return null;
+            const result = tool.result;
+            if (!result || result.error) return null;
+
+            switch (tool.name) {
+                case 'getSummary': {
+                    const rows = (result.activity_per_source || []).filter(r => (r.post_count || 0) > 0);
+                    if (rows.length === 0) return null;
+                    rows.sort((a, b) => b.post_count - a.post_count);
+                    return {
+                        title: `Aktivitas per Kompetitor/Sumber (${result.period_days ?? '?'} hari terakhir)`,
+                        type: 'bar',
+                        labels: rows.map(r => r.name),
+                        datasets: [{ label: 'Jumlah Postingan', data: rows.map(r => r.post_count), backgroundColor: CHART_BRAND }],
+                        multi: false,
+                    };
+                }
+                case 'getGoogleTrendsNow': {
+                    const points = result.interest_over_time || [];
+                    if (points.length === 0) return null;
+                    return {
+                        title: `Tren Google: "${result.keyword ?? ''}" (${result.geo ?? 'ID'})`,
+                        type: 'line',
+                        labels: points.map(p => chartShortDate(p.date)),
+                        datasets: [{
+                            label: 'Minat Pencarian (0-100)', data: points.map(p => p.value),
+                            borderColor: CHART_BRAND, backgroundColor: CHART_BRAND_SOFT, fill: true, tension: 0.3,
+                        }],
+                        multi: false,
+                    };
+                }
+                case 'getEngagement': {
+                    const posts = (result.posts || []).slice().reverse(); // DESC dari API -> kronologis utk chart
+                    if (posts.length === 0) return null;
+                    return {
+                        title: `Engagement Rate per Post (${result.period_days ?? '?'} hari terakhir)`,
+                        type: 'line',
+                        labels: posts.map(p => chartShortDate(p.posted_at)),
+                        datasets: [{
+                            label: 'Engagement Rate (%)',
+                            data: posts.map(p => p.engagement_rate_reach ?? p.engagement_rate_followers ?? 0),
+                            borderColor: CHART_BRAND, backgroundColor: CHART_BRAND_SOFT, fill: true, tension: 0.3,
+                        }],
+                        multi: false,
+                    };
+                }
+                case 'getMetaPosts': {
+                    const posts = (result.results || []).slice().reverse();
+                    if (posts.length === 0) return null;
+                    return {
+                        title: 'Perbandingan Like / Komentar / Reach per Post',
+                        type: 'bar',
+                        labels: posts.map(p => chartTruncate(p.caption, 18) || chartShortDate(p.posted_at)),
+                        datasets: [
+                            { label: 'Like', data: posts.map(p => p.likes ?? 0), backgroundColor: CHART_PALETTE[0] },
+                            { label: 'Komentar', data: posts.map(p => p.comments ?? 0), backgroundColor: CHART_PALETTE[1] },
+                            { label: 'Reach', data: posts.map(p => p.reach ?? 0), backgroundColor: CHART_PALETTE[2] },
+                        ],
+                        multi: true,
+                    };
+                }
+                default:
+                    return null;
+            }
+        }
+
+        // Render 1 chart card per tool_call yang relevan ke dalam `container`.
+        // Aman dipanggil dengan toolCalls undefined/null/[] (langsung no-op).
+        function renderToolCharts(toolCalls, container) {
+            if (!container) return;
+            container.innerHTML = '';
+            if (!Array.isArray(toolCalls) || toolCalls.length === 0) return;
+            if (typeof Chart === 'undefined') return; // CDN Chart.js gagal load, jangan sampai error nge-block chat
+
+            toolCalls.forEach(function (tool) {
+                const cfg = buildChartConfigFromToolCall(tool);
+                if (!cfg) return;
+
+                const card = document.createElement('div');
+                card.className = 'mt-3 bg-white border border-[#e5e5e1] rounded-2xl p-4 shadow-xs';
+                card.innerHTML = `
+                    <p class="text-xs font-bold text-[#885215] mb-2">${escapeHtml(cfg.title)}</p>
+                    <div class="relative h-56"><canvas></canvas></div>
+                `;
+                container.appendChild(card);
+
+                new Chart(card.querySelector('canvas'), {
+                    type: cfg.type,
+                    data: { labels: cfg.labels, datasets: cfg.datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: cfg.multi, labels: { font: { size: 11 } } } },
+                        scales: {
+                            x: { ticks: { font: { size: 10 } } },
+                            y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+                        },
+                    },
+                });
+            });
+        }
+
+        // Render chart utk riwayat pesan (data tersimpan lewat migration
+        // tool_calls, lihat ChatMessage/ChatController) begitu halaman dibuka.
+        document.querySelectorAll('.tool-calls-json').forEach(function (el) {
+            try {
+                const toolCalls = JSON.parse(el.textContent || '[]');
+                renderToolCharts(toolCalls, el.previousElementSibling);
+            } catch (e) {
+                console.warn('Auto-Chart: gagal parse tool_calls riwayat', e);
+            }
+        });
 
         function appendLoading() {
             const loadingId = 'loading-' + Date.now();

@@ -73,7 +73,7 @@ class TwoFactorController extends Controller
                 \Log::warning('Email OTP delivery failed: ' . $e->getMessage());
             }
 
-            return back()->with('status', 'Kode OTP baru telah dikirimkan ke email Anda (Kode Dev: ' . $code . ').');
+            return back()->with('status', 'Kode OTP baru telah dikirimkan ke email Anda.');
         }
 
         return redirect()->route('login');
