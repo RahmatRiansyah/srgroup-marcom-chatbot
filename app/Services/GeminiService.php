@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Services\Concerns\UsesAnalyticsTools;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Client untuk Gemini (Google Generative Language API) dengan function calling.
@@ -38,6 +39,7 @@ class GeminiService
     public function __construct(
         protected AnalyticsApiService $analytics,
         protected TavilySearchService $webSearch,
+        protected EngineStatusService $engineStatus,
     ) {
         $this->apiKey = (string) config('services.gemini.key', '');
 
@@ -59,6 +61,14 @@ class GeminiService
 
             return [
                 'reply'      => 'GEMINI_API_KEY belum dikonfigurasi.',
+                'tool_calls' => [],
+                'error'      => true,
+            ];
+        }
+
+        if ($this->engineStatus->isLimited('gemini')) {
+            return [
+                'reply'      => 'Gemini sedang mencapai batas penggunaan (limit). Coba model lain atau tunggu beberapa saat.',
                 'tool_calls' => [],
                 'error'      => true,
             ];
@@ -147,6 +157,14 @@ class GeminiService
     {
         $lastError = 'Tidak ada model Gemini yang berhasil dihubungi.';
 
+        // Dipakai untuk menentukan apakah SEMUA model kandidat gagal karena
+        // limit/kuota (bukan sekadar error koneksi/model tertentu) -- kalau
+        // iya, seluruh engine "gemini" ditandai limit di EngineStatusService,
+        // bukan cuma satu model kandidatnya saja.
+        $allFailuresAreQuotaIssues = true;
+        $lastRetryAfter = null;
+        $lastQuotaReason = 'rate_limit';
+
         foreach ($this->modelCandidates as $model) {
             try {
                 $request = Http::withHeaders([
@@ -174,14 +192,29 @@ class GeminiService
                     return ['error' => false, 'data' => $response->json()];
                 }
 
-                $lastError = 'Gemini API mengembalikan error (HTTP ' . $response->status() . ') pada model ' . $model . '.';
+                $status = $response->status();
+                $body   = $response->body();
+
+                $isQuotaIssue = $status === 429
+                    || ($status === 400 && Str::contains(strtolower($body), ['credit', 'quota', 'insufficient']));
+
+                if (!$isQuotaIssue) {
+                    $allFailuresAreQuotaIssues = false;
+                } else {
+                    $lastQuotaReason = $status === 429 ? 'rate_limit' : 'quota_habis';
+                    $retryAfter = $response->header('retry-after');
+                    $lastRetryAfter = $retryAfter ? (int) $retryAfter : $lastRetryAfter;
+                }
+
+                $lastError = 'Gemini API mengembalikan error (HTTP ' . $status . ') pada model ' . $model . '.';
 
                 Log::warning('GeminiService: request gagal, coba model berikutnya', [
                     'model'  => $model,
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
+                    'status' => $status,
+                    'body'   => $body,
                 ]);
             } catch (\Exception $e) {
+                $allFailuresAreQuotaIssues = false;
                 $lastError = 'Gagal menghubungi Gemini API: ' . $e->getMessage();
 
                 Log::error('GeminiService: exception saat memanggil Gemini API', [
@@ -189,6 +222,13 @@ class GeminiService
                     'message' => $e->getMessage(),
                 ]);
             }
+        }
+
+        // Semua model kandidat sudah dicoba dan semuanya gagal karena limit/kuota
+        // -> tandai seluruh engine "gemini" limit sementara, supaya model-selector
+        // di UI langsung menonaktifkannya & ChatController tidak perlu coba lagi.
+        if ($allFailuresAreQuotaIssues) {
+            $this->engineStatus->markLimited('gemini', $lastRetryAfter, $lastQuotaReason);
         }
 
         return ['error' => true, 'message' => $lastError];

@@ -1,0 +1,13 @@
+Tambahkan/ubah baris berikut di .env server kamu (bukan file .env ini yang
+diikutkan, karena punya kamu berisi secrets asli):
+
+# --- Fix 6: log rotation ---
+LOG_STACK=daily
+LOG_DAILY_DAYS=14
+
+# --- Fix 5: notifikasi kegagalan scraping ---
+SCRAPE_FAILURE_ALERT_THRESHOLD=3
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_ADMIN_CHAT_ID=
+# (Telegram opsional -- kosongkan kalau tidak dipakai, notifikasi email tetap jalan
+# lewat MAIL_* yang sudah ada)

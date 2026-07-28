@@ -14,6 +14,9 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+        <!-- CDN SweetAlert2 -->
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
@@ -35,5 +38,45 @@
                 {{ $slot }}
             </main>
         </div>
+
+        <!-- Global SweetAlert2 Pop-up Script (SR GROUP Theme) -->
+        <script>
+            function konfirmasiNonaktifkan(namaAkun, formIdOrUrl) {
+                // Filter otomatis agar tidak terjadi typo "akun akun contoh"
+                let targetNama = namaAkun.trim();
+                if (targetNama.toLowerCase().startsWith('akun ')) {
+                    targetNama = targetNama.substring(5).trim();
+                }
+
+                Swal.fire({
+                    title: 'Konfirmasi Nonaktifkan',
+                    html: `Apakah Anda yakin ingin menonaktifkan akun <strong>"${targetNama}"</strong>?`,
+                    icon: 'warning',
+                    iconColor: '#885215',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#f5f3f3',
+                    confirmButtonText: 'Ya, Nonaktifkan',
+                    cancelButtonText: 'Batal',
+                    background: '#ffffff',
+                    color: '#1b1c1c',
+                    customClass: {
+                        popup: 'rounded-2xl border border-[#e5e5e1] shadow-xl p-6',
+                        title: 'text-lg font-bold text-[#1b1c1c]',
+                        htmlContainer: 'text-sm text-[#5f5e5e] mt-2',
+                        confirmButton: 'px-4 py-2 text-xs font-semibold rounded-xl text-white transition shadow-sm',
+                        cancelButton: 'px-4 py-2 text-xs font-semibold rounded-xl text-[#1b1c1c] border border-[#e5e5e1] transition hover:bg-[#efeded]'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        if (typeof formIdOrUrl === 'string' && document.getElementById(formIdOrUrl)) {
+                            document.getElementById(formIdOrUrl).submit();
+                        } else if (typeof formIdOrUrl === 'function') {
+                            formIdOrUrl();
+                        }
+                    }
+                });
+            }
+        </script>
     </body>
 </html>

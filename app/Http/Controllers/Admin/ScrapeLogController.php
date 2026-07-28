@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RunScrapeJob;
 use App\Models\ScrapeLog;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
 class ScrapeLogController extends Controller
 {
@@ -19,15 +20,35 @@ class ScrapeLogController extends Controller
     }
 
     /**
-     * Jalankan scraping sekarang juga (tombol manual), lewat command yang
-     * sama dipakai scheduler harian, supaya perilaku & logging-nya konsisten.
+     * Jalankan scraping sekarang juga (tombol manual).
+     *
+     * PENTING: job didorong ke QUEUE (background), BUKAN dijalankan langsung
+     * di proses request web ini. Sebelumnya pakai Artisan::call('scrape:run')
+     * langsung di sini -- itu tetap kena batas max_execution_time PHP (60
+     * detik), dan sejak scraper.py bisa memakai headless browser untuk target
+     * Instagram/TikTok, satu run scraping bisa lebih lama dari itu -> Fatal
+     * Error "Maximum execution time exceeded". Lihat App\Jobs\RunScrapeJob
+     * untuk detail & catatan penting soal queue worker.
      */
     public function runNow()
     {
-        Artisan::call('scrape:run');
+        // Guard sederhana: cegah klik dobel bikin 2 proses scraping jalan
+        // bersamaan (numpuk beban ke mesin Python & headless browser,
+        // berpotensi bikin angka di scrape_logs kacau kalau race condition).
+        $alreadyQueued = DB::table('jobs')
+            ->where('payload', 'like', '%RunScrapeJob%')
+            ->exists();
+
+        if ($alreadyQueued) {
+            return redirect()
+                ->route('admin.scrapelog.index')
+                ->with('warning', 'Ada proses scraping yang masih berjalan/menunggu di background. Tunggu sampai selesai sebelum menjalankan lagi.');
+        }
+
+        RunScrapeJob::dispatch();
 
         return redirect()
             ->route('admin.scrapelog.index')
-            ->with('success', 'Scraping selesai dijalankan. Lihat hasilnya di tabel di bawah.');
+            ->with('success', 'Scraping sudah dijadwalkan & sedang berjalan di background. Refresh halaman ini beberapa saat lagi untuk melihat hasilnya.');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Services\Concerns\UsesAnalyticsTools;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Client untuk Claude (Anthropic Messages API) dengan tool use / function calling.
@@ -30,8 +31,10 @@ class ClaudeService
     /** Batas berapa kali boleh bolak-balik minta tool sebelum dipaksa berhenti. */
     protected int $maxToolRounds = 4;
 
-    public function __construct(protected AnalyticsApiService $analytics)
-    {
+    public function __construct(
+        protected AnalyticsApiService $analytics,
+        protected EngineStatusService $engineStatus,
+    ) {
         $this->apiKey = (string) config('services.anthropic.key', '');
         $this->model  = (string) config('services.anthropic.model', 'claude-sonnet-5');
     }
@@ -48,6 +51,17 @@ class ClaudeService
 
             return [
                 'reply'      => 'ANTHROPIC_API_KEY belum dikonfigurasi.',
+                'tool_calls' => [],
+                'error'      => true,
+            ];
+        }
+
+        // Sudah diketahui kena limit dari request sebelumnya -> jangan buang
+        // waktu manggil API lagi, langsung gagal supaya ChatController pindah
+        // ke engine berikutnya (atau kasih tahu user kalau ini dipilih manual).
+        if ($this->engineStatus->isLimited('claude')) {
+            return [
+                'reply'      => 'Claude sedang mencapai batas penggunaan (limit). Coba model lain atau tunggu beberapa saat.',
                 'tool_calls' => [],
                 'error'      => true,
             ];
@@ -161,16 +175,34 @@ class ClaudeService
         }
 
         if (!$response->successful()) {
+            $status = $response->status();
+            $body   = $response->body();
+
             // Termasuk kasus token/kredit habis (biasanya HTTP 400 "credit balance too low")
-            // dan rate limit (HTTP 429) -- keduanya ditandai error supaya ChatController fallback ke Gemini.
+            // dan rate limit (HTTP 429) -- keduanya ditandai error supaya ChatController fallback ke Groq/Gemini.
+            // Keduanya JUGA ditandai di EngineStatusService supaya model-selector di UI langsung
+            // menonaktifkan opsi "Claude" sementara, tanpa perlu gagal berulang kali dulu.
+            $isQuotaIssue = $status === 429
+                || ($status === 400 && Str::contains(strtolower($body), ['credit', 'quota', 'insufficient']));
+
+            if ($isQuotaIssue) {
+                $retryAfter = $response->header('retry-after');
+
+                $this->engineStatus->markLimited(
+                    'claude',
+                    $retryAfter ? (int) $retryAfter : null,
+                    $status === 429 ? 'rate_limit' : 'quota_habis'
+                );
+            }
+
             Log::warning('ClaudeService: Claude API mengembalikan error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
+                'status' => $status,
+                'body'   => $body,
             ]);
 
             return [
                 'error'   => true,
-                'message' => 'Claude API mengembalikan error (HTTP ' . $response->status() . ').',
+                'message' => 'Claude API mengembalikan error (HTTP ' . $status . ').',
             ];
         }
 

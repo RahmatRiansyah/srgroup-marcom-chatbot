@@ -5,16 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ScrapeLog extends Model
+class MetaSyncLog extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'status',
-        'total_targets',
-        'success_count',
-        'unchanged_count',
-        'failed_count',
+        'posts_synced',
+        'posts_failed',
         'message',
         'details',
     ];

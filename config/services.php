@@ -40,6 +40,26 @@ return [
         'timeout' => env('ANALYTICS_API_TIMEOUT', 10),
     ],
 
+    // Bot Telegram opsional untuk notifikasi admin (lihat
+    // App\Notifications\Channels\TelegramChannel & ScrapeFailedRepeatedly).
+    // Kalau bot_token/chat_id kosong, channel ini otomatis di-skip (fallback ke
+    // email saja) -- lihat ScrapeFailedRepeatedly::via().
+    // Cara setup: chat @BotFather -> /newbot -> copy token ke TELEGRAM_BOT_TOKEN.
+    // Untuk chat_id: chat bot-nya sekali, lalu buka
+    // https://api.telegram.org/bot<TOKEN>/getUpdates untuk lihat chat.id-nya.
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'chat_id'   => env('TELEGRAM_ADMIN_CHAT_ID'),
+    ],
+
+    // Berapa kali GAGAL TOTAL berturut-turut (status scrape_logs = 'failed')
+    // sebelum admin dikirimi notifikasi. Default 3x supaya tidak berisik untuk
+    // kegagalan sesaat (mis. target lagi maintenance 1 hari), tapi tetap
+    // menangkap kalau memang down berhari-hari.
+    'scrape_alert' => [
+        'failure_threshold' => env('SCRAPE_FAILURE_ALERT_THRESHOLD', 3),
+    ],
+
     // Dipakai GeminiService untuk tool "web_search" custom (lihat
     // TavilySearchService + docblock GeminiService kenapa ini perlu).
     // Daftar gratis di https://tavily.com untuk dapat API key (1.000

@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\TrendSource;
 use App\Models\TrendPost;
 use App\Models\ChatSession;
+use App\Models\MetaAccountSnapshot;
+use App\Models\MetaPost;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -28,12 +30,25 @@ class DashboardController extends Controller
             ->groupBy('platform')
             ->pluck('total', 'platform');
 
+        // 4. Ringkasan Performa Meta (akun IG/FB SR Group sendiri, hasil sync
+        //    berkala dari Graph API -- lihat MetaInsightsController untuk
+        //    tampilan detailnya). Dibuat null-safe karena kredensial Meta
+        //    bisa saja belum di-setup tim, jadi tabel ini masih kosong.
+        $metaSnapshot = MetaAccountSnapshot::orderBy('snapshot_at', 'desc')->first();
+        $metaAvgEngagementRate = MetaPost::whereNotNull('engagement_rate_reach')->avg('engagement_rate_reach');
+        $metaBestPost = MetaPost::orderByRaw('COALESCE(engagement_rate_reach, engagement_rate_followers, 0) DESC')->first();
+        $metaLastSyncedAt = MetaPost::max('fetched_at');
+
         return view('dashboard', compact(
             'totalSources',
             'totalPosts',
             'totalChats',
             'recentPosts',
-            'platformDistribution'
+            'platformDistribution',
+            'metaSnapshot',
+            'metaAvgEngagementRate',
+            'metaBestPost',
+            'metaLastSyncedAt'
         ));
     }
 }

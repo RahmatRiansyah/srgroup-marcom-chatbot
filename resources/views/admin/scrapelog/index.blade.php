@@ -52,11 +52,25 @@
                 </div>
             @endif
 
-            <!-- Info: cron -->
-            <div class="bg-[#fbf9f8] border border-[#e5e5e1] rounded-xl px-4 py-3 text-xs text-[#524439]">
-                Scraping otomatis dijadwalkan tiap hari jam 06:00. Pastikan server menjalankan
-                <code class="text-[#1b1c1c] bg-[#ffffff] px-1.5 py-0.5 rounded">php artisan schedule:run</code>
-                tiap menit lewat cron supaya jadwal ini benar-benar berjalan.
+            <!-- Alert Warning (mis. klik "Jalankan Sekarang" saat proses sebelumnya masih berjalan) -->
+            @if(session('warning'))
+                <div class="bg-[#f4e3d6] border border-[#885215]/20 text-[#885215] px-4 py-3 rounded-xl text-sm flex items-center justify-between">
+                    <span>{{ session('warning') }}</span>
+                </div>
+            @endif
+
+            <!-- Info: cron & queue worker -->
+            <div class="bg-[#fbf9f8] border border-[#e5e5e1] rounded-xl px-4 py-3 text-xs text-[#524439] space-y-1">
+                <p>
+                    Scraping otomatis dijadwalkan tiap hari jam 06:00. Pastikan server menjalankan
+                    <code class="text-[#1b1c1c] bg-[#ffffff] px-1.5 py-0.5 rounded">php artisan schedule:run</code>
+                    tiap menit lewat cron supaya jadwal ini benar-benar berjalan.
+                </p>
+                <p>
+                    Tombol "Jalankan Sekarang" berjalan di background lewat queue -- pastikan juga ada proses
+                    <code class="text-[#1b1c1c] bg-[#ffffff] px-1.5 py-0.5 rounded">php artisan queue:work</code>
+                    yang aktif, kalau tidak job-nya cuma akan menumpuk & tidak pernah diproses.
+                </p>
             </div>
 
             <!-- Tabel Riwayat -->
@@ -72,7 +86,8 @@
                                 <th class="px-6 py-3.5">Waktu</th>
                                 <th class="px-6 py-3.5">Status</th>
                                 <th class="px-6 py-3.5">Target Diproses</th>
-                                <th class="px-6 py-3.5">Berhasil</th>
+                                <th class="px-6 py-3.5">Berhasil (Baru)</th>
+                                <th class="px-6 py-3.5">Tanpa Perubahan</th>
                                 <th class="px-6 py-3.5">Gagal</th>
                                 <th class="px-6 py-3.5">Catatan</th>
                             </tr>
@@ -94,6 +109,7 @@
                                     </td>
                                     <td class="px-6 py-4">{{ $log->total_targets }}</td>
                                     <td class="px-6 py-4 text-[#1b1c1c] font-medium">{{ $log->success_count }}</td>
+                                    <td class="px-6 py-4 text-[#524439] font-medium">{{ $log->unchanged_count }}</td>
                                     <td class="px-6 py-4 text-[#885215] font-medium">{{ $log->failed_count }}</td>
                                     <td class="px-6 py-4 text-[#524439] max-w-sm">
                                         @if($log->message)
@@ -116,7 +132,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-6 text-center text-[#847467]">
+                                    <td colspan="7" class="px-6 py-6 text-center text-[#847467]">
                                         Belum ada riwayat scraping. Klik "Jalankan Sekarang" untuk memulai.
                                     </td>
                                 </tr>

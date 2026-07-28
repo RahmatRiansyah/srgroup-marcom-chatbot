@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\DataSourceController;
+use App\Http\Controllers\Admin\MetaInsightsController;
 use App\Http\Controllers\Admin\ScrapeLogController;
 use App\Http\Controllers\Admin\UserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -37,9 +38,16 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/chat/new', [ChatController::class, 'newSession'])->name('chat.new');
     
     // DIPERBAIKI: Dipisah menjadi 2 route tegas agar /chat/send dan /chat/{id}/send terdeteksi POST
-    Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
-    Route::post('/chat/{id}/send', [ChatController::class, 'send'])->name('chat.send.session');
-    
+    // Rate limit per user (bukan per IP, karena route ini di belakang 'auth') --
+    // tiap panggilan diteruskan ke Claude/Groq/Gemini, jadi spam di sini = biaya
+    // API yang membengkak. 20 pesan/menit cukup longgar untuk pemakaian wajar
+    // tapi memotong potensi spam/looping client yang salah.
+    Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send')->middleware('throttle:20,1');
+    Route::post('/chat/{id}/send', [ChatController::class, 'send'])->name('chat.send.session')->middleware('throttle:20,1');
+
+    // Status limit tiap engine (Claude/Groq/Gemini), dipoll oleh model-selector di UI chat.
+    Route::get('/chat/engine-status', [ChatController::class, 'engineStatus'])->name('chat.engine-status');
+
     Route::delete('/chat/{id}', [ChatController::class, 'destroy'])->name('chat.destroy');
 
 
@@ -57,6 +65,9 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::get('/scrape-log', [ScrapeLogController::class, 'index'])->name('scrapelog.index');
         Route::post('/scrape-log/run', [ScrapeLogController::class, 'runNow'])->name('scrapelog.run');
+
+        Route::get('/meta-insights', [MetaInsightsController::class, 'index'])->name('meta-insights.index');
+        Route::post('/meta-insights/sync', [MetaInsightsController::class, 'syncNow'])->name('meta-insights.sync');
 
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
         Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');

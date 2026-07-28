@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Kelola User - SR Group</title>
+
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/srgroup-logo-white.svg') }}">
+
     <!-- CDN Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- CDN SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-[#fbf9f8] text-[#1b1c1c] min-h-screen flex font-sans overflow-hidden">
 
@@ -192,14 +197,24 @@
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         @if($user->id !== auth()->id())
-                                            <form action="{{ route('admin.users.toggle-active', $user->id) }}" method="POST"
-                                                onsubmit="return confirm('{{ $user->is_active ? 'Nonaktifkan' : 'Aktifkan' }} akun {{ $user->name }}?');" class="inline">
+                                            <form id="form-toggle-{{ $user->id }}" action="{{ route('admin.users.toggle-active', $user->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 @method('PUT')
-                                                <button type="submit"
-                                                    class="{{ $user->is_active ? 'text-[#885215] hover:text-[#1b1c1c] hover:bg-[#f4e3d6] bg-[#f4e3d6] border-[#e7c5a6]' : 'text-[#8b8f94] hover:text-[#1b1c1c] hover:bg-[#f0f0f0] bg-[#f0f0f0] border-[#d9d9d9]' }} border px-3 py-1.5 rounded-lg text-xs font-medium transition">
-                                                    {{ $user->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
-                                                </button>
+                                                
+                                                @if($user->is_active)
+                                                    <!-- Jika Aktif, tampilkan tombol Nonaktifkan yang memanggil SweetAlert2 -->
+                                                    <button type="button"
+                                                        onclick="konfirmasiNonaktifkan('{{ $user->name }}', 'form-toggle-{{ $user->id }}')"
+                                                        class="text-[#885215] hover:text-[#1b1c1c] hover:bg-[#f4e3d6] bg-[#f4e3d6] border-[#e7c5a6] border px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                                                        Nonaktifkan
+                                                    </button>
+                                                @else
+                                                    <!-- Jika Nonaktif, tombol untuk Mengaktifkan kembali -->
+                                                    <button type="submit"
+                                                        class="text-[#8b8f94] hover:text-[#1b1c1c] hover:bg-[#f0f0f0] bg-[#f0f0f0] border-[#d9d9d9] border px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                                                        Aktifkan
+                                                    </button>
+                                                @endif
                                             </form>
                                         @else
                                             <span class="text-[#885215] text-xs">-</span>
@@ -220,5 +235,43 @@
         </main>
     </div>
 
+    <!-- Script Global SweetAlert2 untuk Konfirmasi Nonaktifkan -->
+    <script>
+        function konfirmasiNonaktifkan(namaAkun, formIdOrUrl) {
+            let targetNama = namaAkun.trim();
+            if (targetNama.toLowerCase().startsWith('akun ')) {
+                targetNama = targetNama.substring(5).trim();
+            }
+
+            Swal.fire({
+                title: 'Konfirmasi Nonaktifkan',
+                html: `Apakah Anda yakin ingin menonaktifkan akun <strong>"${targetNama}"</strong>?`,
+                icon: 'warning',
+                iconColor: '#885215',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#f5f3f3',
+                confirmButtonText: 'Ya, Nonaktifkan',
+                cancelButtonText: 'Batal',
+                background: '#ffffff',
+                color: '#1b1c1c',
+                customClass: {
+                    popup: 'rounded-2xl border border-[#e5e5e1] shadow-xl p-6',
+                    title: 'text-lg font-bold text-[#1b1c1c]',
+                    htmlContainer: 'text-sm text-[#5f5e5e] mt-2',
+                    confirmButton: 'px-4 py-2 text-xs font-semibold rounded-xl text-white transition shadow-sm',
+                    cancelButton: 'px-4 py-2 text-xs font-semibold rounded-xl text-[#1b1c1c] border border-[#e5e5e1] transition hover:bg-[#efeded]'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (typeof formIdOrUrl === 'string' && document.getElementById(formIdOrUrl)) {
+                        document.getElementById(formIdOrUrl).submit();
+                    } else if (typeof formIdOrUrl === 'function') {
+                        formIdOrUrl();
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>

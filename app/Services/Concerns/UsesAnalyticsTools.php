@@ -4,10 +4,10 @@ namespace App\Services\Concerns;
 
 /**
  * Logic yang dipakai bersama oleh ClaudeService, GroqService & GeminiService:
- * definisi tool getTrend/getCompetitorPrice/getSummary/getGoogleTrendsNow,
- * cara menjalankannya lewat AnalyticsApiService, dan system prompt-nya.
- * Disatukan di sini supaya jawaban chatbot konsisten mau dijawab Claude,
- * Groq, atau Gemini (fallback).
+ * definisi tool getTrend/getCompetitorPrice/getSummary/getGoogleTrendsNow/
+ * getEngagement/getMetaPosts, cara menjalankannya lewat AnalyticsApiService,
+ * dan system prompt-nya. Disatukan di sini supaya jawaban chatbot konsisten
+ * mau dijawab Claude, Groq, atau Gemini (fallback).
  *
  * Tool "web_search" bawaan Anthropic TIDAK didefinisikan di sini karena
  * formatnya spesifik Anthropic (server tool) — lihat ClaudeService::toolDefinitions().
@@ -36,6 +36,12 @@ trait UsesAnalyticsTools
                 $input['keyword'] ?? '',
                 $input['geo'] ?? 'ID'
             ),
+            'getEngagement' => $this->analytics->getMetaEngagementSummary(
+                (int) ($input['days'] ?? 7)
+            ),
+            'getMetaPosts' => $this->analytics->getMetaPosts(
+                (int) ($input['limit'] ?? 10)
+            ),
             default => [
                 'error'   => true,
                 'message' => "Tool '{$name}' tidak dikenal.",
@@ -51,12 +57,24 @@ Kamu adalah Asisten Strategi Marketing & Komunikasi (Marcom) untuk tim internal.
 Tugasmu membantu tim menjawab pertanyaan seputar tren pasar dan aktivitas kompetitor,
 berdasarkan data yang benar-benar ada — jangan pernah mengarang data.
 
-Kamu punya beberapa tools, dibagi 2 kategori:
+Kamu punya beberapa tools, dibagi 3 kategori:
 
-DATA YANG SUDAH DIPANTAU TIM (dari kompetitor/keyword yang terdaftar di sistem):
+DATA YANG SUDAH DIPANTAU TIM (dari kompetitor/keyword yang terdaftar di sistem, hasil
+scraping -- caption/teks saja, TIDAK ada angka like/komentar resmi):
 - getTrend: cari postingan/tren berdasarkan kata kunci di antara sumber yang dipantau
 - getCompetitorPrice: detail & postingan terbaru satu kompetitor/target tertentu (butuh nama)
 - getSummary: ringkasan aktivitas semua kompetitor/target dalam N hari terakhir
+
+PERFORMA AKUN META SENDIRI (Instagram/Facebook resmi SR Group, data ASLI dari Meta Graph
+API -- like, komentar, saved, shares, reach, engagement rate, disinkron berkala jadi
+selalu relatif baru, BUKAN hasil scraping):
+- getEngagement: ringkasan engagement akun sendiri dalam N hari terakhir (rata-rata
+  engagement rate, post terbaik, kesegaran data lewat field "data_age_minutes")
+- getMetaPosts: daftar post terbaru akun sendiri beserta angka engagement per post
+- PENTING: tool ini HANYA untuk akun Meta milik SR Group sendiri. Kalau user tanya
+  engagement/performa akun KOMPETITOR, jangan pakai tool ini -- jelaskan bahwa Meta Graph
+  API cuma bisa diakses untuk akun yang dikelola sendiri, jadi untuk kompetitor pakai
+  getCompetitorPrice/getTrend (cuma dapat konten/caption, bukan angka like/komentar resmi)
 
 DATA LIVE (di luar kompetitor/keyword yang sudah terdaftar):
 - getGoogleTrendsNow: query LANGSUNG ke Google Trends untuk satu kata kunci — pakai ini
@@ -64,13 +82,13 @@ DATA LIVE (di luar kompetitor/keyword yang sudah terdaftar):
 - web_search (kalau tersedia): cari di web umum untuk berita/tren terkini yang di luar
   cakupan Google Trends maupun data internal, mis. "kompetitor baru apa yang muncul soal X"
 
-Urutan yang disarankan: coba dulu getTrend/getCompetitorPrice/getSummary (data internal
-paling terpercaya untuk kompetitor yang memang dipantau tim). Kalau hasilnya kosong atau
-pertanyaannya di luar cakupan data yang dipantau, baru pakai getGoogleTrendsNow atau
-web_search untuk cari yang sedang tren saat ini secara umum. Kalau semua tool tetap kosong
-atau error, katakan terus terang datanya belum tersedia — jangan menebak-nebak. Kalau
-memakai data live (getGoogleTrendsNow/web_search), sebutkan ke user bahwa itu data umum
-dari luar sistem, bukan hasil pemantauan khusus tim.
+Urutan yang disarankan: coba dulu getTrend/getCompetitorPrice/getSummary/getEngagement/
+getMetaPosts (data internal paling terpercaya, sesuai kategori pertanyaannya). Kalau
+hasilnya kosong atau pertanyaannya di luar cakupan data yang dipantau, baru pakai
+getGoogleTrendsNow atau web_search untuk cari yang sedang tren saat ini secara umum. Kalau
+semua tool tetap kosong atau error, katakan terus terang datanya belum tersedia — jangan
+menebak-nebak. Kalau memakai data live (getGoogleTrendsNow/web_search), sebutkan ke user
+bahwa itu data umum dari luar sistem, bukan hasil pemantauan khusus tim.
 
 PENTING soal kesegaran data: getTrend & getCompetitorPrice mengembalikan field
 "newest_post_age_days" (umur postingan terbaru yang ditemukan, dalam hari). Kamu WAJIB
@@ -84,6 +102,12 @@ memperhatikan angka ini:
 - Jangan pernah mengarang atau mengasumsikan data itu "baru" tanpa mengecek field ini
   dulu, karena tugas utamamu adalah analisis TREN yang harus selalu relate dengan kondisi
   sekarang, bukan histori lama.
+
+getEngagement juga punya field kesegaran serupa, namanya "data_age_minutes" (dalam menit,
+bukan hari -- karena sync-nya tiap 30 menit, jauh lebih sering dari scraping kompetitor
+yang harian). Kalau angkanya besar (mis. berjam-jam/berhari-hari, tandanya scheduler sync
+mungkin berhenti jalan di server), sebutkan itu ke user alih-alih diam-diam menyajikannya
+seolah baru saja terjadi.
 
 Untuk sapaan atau pertanyaan strategi umum yang tidak butuh data spesifik, jawab langsung
 tanpa tools. Selalu jawab dalam Bahasa Indonesia: singkat, jelas, dan actionable untuk tim
@@ -130,6 +154,22 @@ TEXT;
                     'geo'     => ['type' => 'string', 'description' => "Kode negara 2 huruf, default 'ID' (Indonesia)"],
                 ],
                 'required' => ['keyword'],
+            ],
+            [
+                'name'        => 'getEngagement',
+                'description' => 'Ringkasan engagement akun Instagram/Facebook RESMI milik SR Group sendiri (BUKAN kompetitor) dalam N hari terakhir — rata-rata engagement rate, post dengan performa terbaik, dan total post. Data asli dari Meta Graph API (like, komentar, saved, shares, reach), disinkron berkala.',
+                'properties'  => [
+                    'days' => ['type' => 'integer', 'description' => 'Rentang hari ke belakang, default 7'],
+                ],
+                'required' => [],
+            ],
+            [
+                'name'        => 'getMetaPosts',
+                'description' => 'Daftar post terbaru akun Instagram/Facebook RESMI milik SR Group sendiri (BUKAN kompetitor) beserta angka engagement lengkap per post (like, komentar, saved, shares, reach, engagement rate).',
+                'properties'  => [
+                    'limit' => ['type' => 'integer', 'description' => 'Jumlah maksimal post, default 10'],
+                ],
+                'required' => [],
             ],
         ];
     }

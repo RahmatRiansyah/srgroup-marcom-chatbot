@@ -14,3 +14,11 @@ Artisan::command('inspire', function () {
 // menjalankan Laravel scheduler tiap menit:
 //   * * * * * cd /path-ke-project && php artisan schedule:run >> /dev/null 2>&1
 Schedule::command('scrape:run')->dailyAt('06:00');
+
+// Sync engagement Meta (akun sendiri) jauh lebih sering dari scraping
+// kompetitor -- ini yang bikin dashboard/chatbot terasa "real-time".
+// Meta sendiri tidak punya push live untuk like/komentar/reach, jadi
+// polling tiap 30 menit ini praktiknya paling "real-time" yang wajar
+// tanpa boros kuota rate limit Graph API. Ubah intervalnya kalau perlu
+// lebih cepat/lambat (mis. ->everyFifteenMinutes()).
+Schedule::command('meta:sync')->everyThirtyMinutes();

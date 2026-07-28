@@ -16,6 +16,7 @@ class ChatMessage extends Model
         'chat_session_id',
         'message',
         'response',
+        'engine',
     ];
 
     // Relasi balik ke data User yang sedang login

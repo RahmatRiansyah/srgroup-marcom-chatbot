@@ -110,6 +110,13 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             <span>Log Scraping</span>
                         </a>
+
+                        <!-- Performa Meta (engagement akun IG/FB sendiri, real-time via Graph API) -->
+                        <a href="{{ route('admin.meta-insights.index') }}" 
+                           class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition {{ request()->routeIs('admin.meta-insights.*') ? 'bg-[#ffffff]/5 border-l-4 border-[#885215] text-[#ffffff] shadow-sm shadow-[#0000000d]' : 'text-[#c8c6c5] hover:bg-[#ffffff]/10 hover:text-[#ffffff]' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <span>Performa Meta</span>
+                        </a>
                     @endif
 
                 </div>

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Services\Concerns\UsesAnalyticsTools;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Client untuk Groq (GroqCloud) dengan tool use / function calling.
@@ -44,8 +45,10 @@ class GroqService
     /** Batas berapa kali boleh bolak-balik minta tool sebelum dipaksa berhenti. */
     protected int $maxToolRounds = 4;
 
-    public function __construct(protected AnalyticsApiService $analytics)
-    {
+    public function __construct(
+        protected AnalyticsApiService $analytics,
+        protected EngineStatusService $engineStatus,
+    ) {
         $this->apiKey = (string) config('services.groq.key', '');
         $this->model  = (string) config('services.groq.model', 'openai/gpt-oss-120b');
     }
@@ -62,6 +65,14 @@ class GroqService
 
             return [
                 'reply'      => 'GROQ_API_KEY belum dikonfigurasi.',
+                'tool_calls' => [],
+                'error'      => true,
+            ];
+        }
+
+        if ($this->engineStatus->isLimited('groq')) {
+            return [
+                'reply'      => 'Groq sedang mencapai batas penggunaan (limit). Coba model lain atau tunggu beberapa saat.',
                 'tool_calls' => [],
                 'error'      => true,
             ];
@@ -176,16 +187,34 @@ class GroqService
         }
 
         if (!$response->successful()) {
-            // Termasuk kasus rate limit (HTTP 429) dan model/koneksi bermasalah --
-            // ditandai error supaya ChatController lanjut fallback ke Gemini.
+            $status = $response->status();
+            $body   = $response->body();
+
+            // Termasuk kasus rate limit (HTTP 429) dan kuota habis -- ditandai error
+            // supaya ChatController lanjut fallback ke Gemini, DAN ditandai di
+            // EngineStatusService supaya model-selector di UI langsung menonaktifkan
+            // opsi "Groq" sementara.
+            $isQuotaIssue = $status === 429
+                || ($status === 400 && Str::contains(strtolower($body), ['credit', 'quota', 'insufficient']));
+
+            if ($isQuotaIssue) {
+                $retryAfter = $response->header('retry-after');
+
+                $this->engineStatus->markLimited(
+                    'groq',
+                    $retryAfter ? (int) $retryAfter : null,
+                    $status === 429 ? 'rate_limit' : 'quota_habis'
+                );
+            }
+
             Log::warning('GroqService: Groq API mengembalikan error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
+                'status' => $status,
+                'body'   => $body,
             ]);
 
             return [
                 'error'   => true,
-                'message' => 'Groq API mengembalikan error (HTTP ' . $response->status() . ').',
+                'message' => 'Groq API mengembalikan error (HTTP ' . $status . ').',
             ];
         }
 

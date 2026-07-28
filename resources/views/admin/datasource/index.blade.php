@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Manajemen Sumber Data Marcom - SR Group</title>
+
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/srgroup-logo-white.svg') }}">
+
     <!-- CDN Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- CDN SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-[#fbf9f8] text-[#1b1c1c] min-h-screen flex font-sans overflow-hidden">
 
@@ -34,10 +39,15 @@
         <!-- Body Content -->
         <main class="p-6 max-w-7xl mx-auto w-full space-y-6">
 
-            <!-- Alert Success -->
+            <!-- Alert Success / Error -->
             @if(session('success'))
-                <div class="bg-[#8CCEAD]/10 border border-[#8CCEAD]/20 text-[#8CCEAD] px-4 py-3 rounded-xl text-sm flex items-center justify-between">
+                <div class="bg-[#f4e9de] border border-[#e7c5a6] text-[#885215] px-4 py-3 rounded-xl text-sm flex items-center justify-between">
                     <span>{{ session('success') }}</span>
+                </div>
+            @endif
+            @if(session('error'))
+                <div class="bg-[#f4e3d6] border border-[#e7c5a6] text-[#885215] px-4 py-3 rounded-xl text-sm">
+                    {{ session('error') }}
                 </div>
             @endif
 
@@ -71,6 +81,7 @@
                             <option value="Website">Website</option>
                             <option value="Google Trends">Google Trends</option>
                             <option value="Instagram">Instagram</option>
+                            <option value="TikTok">TikTok</option>
                         </select>
                     </div>
 
@@ -106,7 +117,7 @@
                         <thead class="text-xs uppercase bg-[#f5f3f3] text-[#524439]">
                             <tr>
                                 <th class="px-6 py-3.5">Nama / Keyword</th>
-                                <th class="px-6 py-3.5">Platform</th>
+                                <th class="px-6 py-[#3.5]">Platform</th>
                                 <th class="px-6 py-3.5">URL</th>
                                 <th class="px-6 py-3.5">Status</th>
                                 <th class="px-6 py-3.5 text-right">Aksi</th>
@@ -139,10 +150,14 @@
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <!-- Form Hapus Target -->
-                                        <form action="{{ route('admin.datasource.destroy', $source->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus target ini?');" class="inline">
+                                        <form id="form-delete-{{ $source->id }}" action="{{ route('admin.datasource.destroy', $source->id) }}" method="POST" class="inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-[#885215] hover:text-[#1b1c1c] hover:bg-[#885215]/10 bg-[#885215]/10 border border-[#885215]/20 px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                                            <button 
+                                                type="button" 
+                                                onclick="konfirmasiHapus('{{ $source->name }}', 'form-delete-{{ $source->id }}')" 
+                                                class="text-[#885215] hover:text-[#1b1c1c] hover:bg-[#885215]/10 bg-[#885215]/10 border border-[#885215]/20 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                            >
                                                 Hapus
                                             </button>
                                         </form>
@@ -162,5 +177,34 @@
         </main>
     </div>
 
+    <!-- Script SweetAlert2 Konfirmasi Hapus Target -->
+    <script>
+        function konfirmasiHapus(namaTarget, formId) {
+            Swal.fire({
+                title: 'Konfirmasi Hapus',
+                html: `Apakah Anda yakin ingin menghapus target monitoring <strong>"${namaTarget}"</strong>?`,
+                icon: 'warning',
+                iconColor: '#885215',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#f5f3f3',
+                confirmButtonText: 'Ya, Hapus',
+                cancelButtonText: 'Batal',
+                background: '#ffffff',
+                color: '#1b1c1c',
+                customClass: {
+                    popup: 'rounded-2xl border border-[#e5e5e1] shadow-xl p-6',
+                    title: 'text-lg font-bold text-[#1b1c1c]',
+                    htmlContainer: 'text-sm text-[#5f5e5e] mt-2',
+                    confirmButton: 'px-4 py-2 text-xs font-semibold rounded-xl text-white transition shadow-sm',
+                    cancelButton: 'px-4 py-2 text-xs font-semibold rounded-xl text-[#1b1c1c] border border-[#e5e5e1] transition hover:bg-[#efeded]'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(formId).submit();
+                }
+            });
+        }
+    </script>
 </body>
 </html>
